@@ -56,6 +56,9 @@ export class Director {
         // tło
         backReact: 0.5,
         backSpeed: 0.6,
+        // jakość obrazu: wygładzanie krawędzi głębi (FXAA), render w 1,5× rozdzielczości
+        fxaa: true,
+        hiRes: false,
         // ręczny drop: co narasta w trakcie odliczania i co się dzieje w momencie dropu
         dropBars: 4,
         dropBuild: { blur: true, accel: true, dark: false, strobe: true, glitch: false, shatter: false },
@@ -618,6 +621,8 @@ export class Director {
       flashCol: this.col.c1.map((c) => lerp(c, 1, 0.5)),
       black: this.blackAmt,
       grain: 0.035,
+      fxaa: this.s.fxaa,
+      hiRes: this.s.hiRes,
       glitch: this.glitchAmt > 0.01 ? this.glitchAmt : 0,
       shatter,
       shatterSeed: this.shatterSeed,

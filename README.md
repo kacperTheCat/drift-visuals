@@ -137,6 +137,15 @@ czy jest przypisany; `DRIFT.midi.debug = false` wyłącza log.
 **XDJ-RX3:** jeśli RX3 wysyła komunikaty MIDI albo zegar, DRIFT je odbierze. Po podłączeniu
 sprawdź status MIDI w pasku: pokazuje liczbę urządzeń i ostatnio odebraną kontrolkę (np. `CC21`).
 
+## Jakość obrazu
+
+W sekcji Warstwy, „Jakość obrazu”:
+- **Wygładzanie krawędzi** (domyślnie włączone): filtr FXAA na warstwie głębi — usuwa schodki
+  na krawędziach scen 3D, praktycznie bez kosztu wydajności.
+- **Wysoka rozdzielczość** (domyślnie wyłączona): sceny liczone w 1,5× rozdzielczości i pomniejszane.
+  Najwięcej detalu, ale ok. 2× większe obciążenie karty graficznej. Render nigdy nie jest gęstszy niż
+  2 piksele na piksel ekranu, więc na ekranach Retina opcja niewiele zmienia.
+
 ## Projektor
 
 Nie duplikuj ekranów. W macOS ustaw projektor jako **rozszerzony** ekran

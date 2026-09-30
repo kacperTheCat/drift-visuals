@@ -210,6 +210,8 @@ function runControl() {
   bal.addEventListener('dblclick', () => d.setBalance(0.5));
   $('blend').innerHTML = BLENDS.map(([m, label], i) => `<button data-v="${m}" title="M">${label}</button>`).join('');
   $('autoBlend').addEventListener('change', (e) => d.set('autoBlend', e.target.checked));
+  $('qFxaa').addEventListener('click', () => d.set('fxaa', !d.s.fxaa));
+  $('qHiRes').addEventListener('click', () => d.set('hiRes', !d.s.hiRes));
 
   // --- palety ---
   const palRow = (box, layer) =>
@@ -523,6 +525,8 @@ function runControl() {
     strobe.classList.toggle('on', d.strobe);
     $('aGlitch').classList.toggle('on', d.glitch);
     $('aShatter').classList.toggle('on', d.shatterOn);
+    $('qFxaa').classList.toggle('on', d.s.fxaa);
+    $('qHiRes').classList.toggle('on', d.s.hiRes);
     // Wariacja wyszarzona, gdy nic by nie zmieniła (scena bez wariacji albo warstwa niewidoczna).
     for (const [id, layer, key] of [['aVary', 'depth', 'V'], ['aVaryBack', 'back', '⇧V']]) {
       const why = varyBlocked(d, layer);

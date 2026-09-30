@@ -30,6 +30,7 @@ uniform int uMode; // 0 normalny, 1 światło (screen), 2 maska, 3 różnica
 uniform float uTime, uFlash, uBlack, uGrain;
 uniform float uGlitch, uGSeed; // siła glitcha 0..1, ziarno zmieniane w rytm (co ósemkę)
 uniform float uShatter, uShSeed, uAspect; // rozpad: postęp 0..1, wzór pęknięć, proporcje ekranu
+uniform float uFxaa; uniform vec2 uDTexel; // wygładzanie krawędzi głębi (FXAA), rozmiar teksela
 uniform vec3 uFlashCol;
 float lum(vec3 c){ return dot(c, vec3(.299,.587,.114)); }
 float h1(float n){ return fract(sin(n*127.1)*43758.5453); }
@@ -79,9 +80,29 @@ vec4 shatter(vec2 uv){
   return vec4(uv,-1.,0.);
 }
 
+// FXAA (wersja uproszczona): wygładza schodki na krawędziach — szuka kierunku krawędzi
+// z jasności sąsiadów i uśrednia wzdłuż niej. Płaskie obszary zostają nietknięte.
+vec4 fxaaD(vec2 uv){
+  vec2 px=uDTexel;
+  vec4 c=texture(uD,uv);
+  float lM=lum(c.rgb);
+  float lNW=lum(texture(uD,uv+vec2(-1.,-1.)*px).rgb), lNE=lum(texture(uD,uv+vec2(1.,-1.)*px).rgb);
+  float lSW=lum(texture(uD,uv+vec2(-1.,1.)*px).rgb), lSE=lum(texture(uD,uv+vec2(1.,1.)*px).rgb);
+  float lMin=min(lM,min(min(lNW,lNE),min(lSW,lSE)));
+  float lMax=max(lM,max(max(lNW,lNE),max(lSW,lSE)));
+  if(lMax-lMin<max(.02,lMax*.1)) return c; // brak krawędzi
+  vec2 dir=vec2(-((lNW+lNE)-(lSW+lSE)),(lNW+lSW)-(lNE+lSE));
+  float red=max((lNW+lNE+lSW+lSE)*.03125,1./128.);
+  dir=clamp(dir/(min(abs(dir.x),abs(dir.y))+red),-8.,8.)*px;
+  vec4 a=.5*(texture(uD,uv+dir*(1./3.-.5))+texture(uD,uv+dir*(2./3.-.5)));
+  vec4 b=a*.5+.25*(texture(uD,uv-dir*.5)+texture(uD,uv+dir*.5));
+  float lB=lum(b.rgb);
+  return (lB<lMin||lB>lMax)?a:b;
+}
+
 // Nakładanie głębi na tło w danym punkcie.
 vec3 layers(vec2 uv){
-  vec4 d=texture(uD,uv);
+  vec4 d=uFxaa>.5?fxaaD(uv):texture(uD,uv);
   vec3 D=d.rgb; float Da=d.a;
   vec3 K=mix(texture(uK1,uv).rgb, texture(uK0,uv).rgb, uBackMix)*uBackLevel;
   // Balans: 0 = samo tło, 0.5 = oba plany w pełni, 1 = sama głębia.
@@ -142,6 +163,7 @@ export class Engine {
   constructor(canvas, { scale = 1, maxDpr = 1.5 } = {}) {
     this.canvas = canvas;
     this.scale = scale;
+    this.ss = 1; // mnożnik rozdzielczości renderu (opcja "Wysoka rozdzielczość")
     this.maxDpr = maxDpr;
     const gl = canvas.getContext('webgl2', {
       antialias: false, alpha: false, depth: false, stencil: false,
@@ -232,8 +254,11 @@ export class Engine {
       c.width = w;
       c.height = h;
     }
-    const rw = Math.max(2, Math.round(w * this.scale));
-    const rh = Math.max(2, Math.round(h * this.scale));
+    // Wysoka rozdzielczość (ss > 1): sceny liczone gęściej niż ekran, ale nie gęściej niż 2 piksele
+    // renderu na piksel CSS — na ekranach Retina i tak jest już gęsto.
+    const factor = Math.min(this.scale * this.ss, Math.max(this.scale, 2 / dpr));
+    const rw = Math.max(2, Math.round(w * factor));
+    const rh = Math.max(2, Math.round(h * factor));
     if (rw === this.w && rh === this.h) return;
     if (this.fb) {
       for (const t of [this.fb.a, this.fb.b, this.fb.k0, this.fb.k1, ...this.fb.f]) {
@@ -284,6 +309,7 @@ export class Engine {
 
   render(f) {
     const gl = this.gl;
+    this.ss = f.hiRes ? 1.5 : 1;
     this.resize();
     gl.viewport(0, 0, this.w, this.h);
 
@@ -324,6 +350,8 @@ export class Engine {
     gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.fb.k0.tex);
     gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, this.fb.k1.tex);
     gl.uniform1i(p.u.uD, 0);
+    gl.uniform1f(p.u.uFxaa, f.fxaa ? 1 : 0);
+    gl.uniform2f(p.u.uDTexel, 1 / this.w, 1 / this.h);
     gl.uniform1i(p.u.uK0, 1);
     gl.uniform1i(p.u.uK1, 2);
     gl.uniform1f(p.u.uBackMix, backMix);
