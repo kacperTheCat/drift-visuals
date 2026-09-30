@@ -1,0 +1,870 @@
+// Sceny = fragment shadery GLSL. Każda dostaje te same uniformy (patrz COMMON).
+//
+// Dwie warstwy:
+//   layer: 'depth' — pierwszy plan z głębią (klawisze 1–9). Zwraca kolor
+//                    "premultiplied" + alfę = ile zasłania tło (0 = puste, prześwituje tło).
+//   layer: 'back'  — tło (backdrop): płaskie, wolne tekstury. Alfa ignorowana.
+//
+// Scena 3D (raymarching): podaj `map` (funkcja odległości `float map(vec3 p)`) i `frag` z main().
+// W main() są dostępne: camera(ro,ta,roll), march(ro,rd,maxd,glow), shade(ro,rd,t,maxd,glow,emit).
+//
+// mood: 'drive' (groove, stopa gra), 'calm' (breakdown), 'both'.
+// uVar.xyzw to 4 losowe parametry 0..1 — autopilot powoli je zmienia ("wariacje").
+
+export const COMMON = /* glsl */ `#version 300 es
+precision highp float;
+in vec2 vUv;
+out vec4 fragColor;
+uniform vec2 uRes;
+uniform float uTime;    // czas "przepływu" — przyspiesza z basem i stopą
+uniform float uBeats;   // licznik beatów (ciągły, zsynchronizowany z BPM)
+uniform float uKick;    // obwiednia stopy 0..1
+uniform float uBass, uMid, uHigh, uEnergy;
+uniform float uReact;   // reaktywność 0..1
+uniform float uInt;     // intensywność 0..1
+uniform vec3 uBg, uC1, uC2;
+uniform vec4 uVar;
+#define PI 3.14159265359
+#define TAU 6.28318530718
+#define KICK (uKick*uReact)
+#define BASS (uBass*uReact)
+mat2 rot(float a){float c=cos(a),s=sin(a);return mat2(c,-s,s,c);}
+float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
+float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+  return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
+float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<5;i++){v+=a*noise(p);p=rot(.5)*p*2.03+11.7;a*=.5;}return v;}
+vec2 cuv(){return (gl_FragCoord.xy-.5*uRes)/uRes.y;}
+float px(){return 1.5/uRes.y;}
+// antyaliasowana linia: 1 gdy d < w
+float band(float d,float w){float aa=fwidth(d)+1e-5;return 1.-smoothstep(w-aa,w+aa,d);}
+// alfa dla płaskich scen pierwszego planu: jasne = zasłania tło
+float cover(vec3 c){return clamp(max(max(c.r,c.g),c.b)*3.,0.,1.);}
+float sdBox(vec3 p,vec3 b){vec3 q=abs(p)-b;return length(max(q,0.))+min(max(q.x,max(q.y,q.z)),0.);}
+float sdTorus(vec3 p,vec2 t){return length(vec2(length(p.xz)-t.x,p.y))-t.y;}
+float sdOct(vec3 p,float s){p=abs(p);return (p.x+p.y+p.z-s)*.57735;}
+float smin(float a,float b,float k){float h=clamp(.5+.5*(b-a)/k,0.,1.);return mix(b,a,h)-k*h*(1.-h);}
+`;
+
+// Wstawiane między `map` a `frag` scen 3D.
+export const RAYMARCH = /* glsl */ `
+vec3 calcNormal(vec3 p){
+  const vec2 e=vec2(.0015,-.0015);
+  return normalize(e.xyy*map(p+e.xyy)+e.yyx*map(p+e.yyx)+e.yxy*map(p+e.yxy)+e.xxx*map(p+e.xxx));
+}
+// Zwraca odległość trafienia albo -1; glow = poświata z przelotów blisko powierzchni.
+float march(vec3 ro,vec3 rd,float maxd,out float glow){
+  float t=0.;glow=0.;
+  for(int i=0;i<80;i++){
+    float d=map(ro+rd*t);
+    glow+=exp(-max(d,0.)*10.)*.015;
+    if(d<.0015*t+.0005) return t;
+    t+=d*.85;
+    if(t>maxd) break;
+  }
+  return -1.;
+}
+mat3 camera(vec3 ro,vec3 ta,float roll){
+  vec3 w=normalize(ta-ro),up=vec3(sin(roll),cos(roll),0.);
+  vec3 u=normalize(cross(up,w)),v=cross(w,u);
+  return mat3(u,v,w);
+}
+// Oświetlenie + mgła głębi. Pudło (t<0) jest przezroczyste — tam prześwituje tło.
+vec4 shade(vec3 ro,vec3 rd,float t,float maxd,float glow,float emit){
+  vec3 g=uC1*glow*(.5+.8*KICK);
+  float ga=clamp(glow,0.,1.);
+  if(t<0.) return vec4(g*(.55+.6*uInt),ga*.8);
+  vec3 p=ro+rd*t,n=calcNormal(p);
+  vec3 l=normalize(vec3(.5,.8,-.4));
+  float dif=max(dot(n,l),0.);
+  float head=max(dot(n,-rd),0.); // "latarka" z kamery — doświetla zakamarki
+  float rim=pow(1.-head,3.);
+  vec3 col=uC2*(.08+.45*dif+.3*head)+uC1*rim*.5+uC1*emit;
+  float fog=exp(-pow(t/maxd,2.)*3.);
+  col=col*fog+g;
+  return vec4(col*(.55+.6*uInt),clamp(fog+ga,0.,1.));
+}
+`;
+
+export const SCENES = [
+  // =====================================================================
+  // GŁĘBIA — 3D
+  // =====================================================================
+  // WYŁĄCZONE: Monolity — usuń "// " z poniższych linii, żeby przywrócić.
+//   {
+//     id: 'pillars', name: 'Monolity', layer: 'depth', mood: 'drive',
+//     map: /* glsl */ `
+// float map(vec3 p){
+//   vec2 id=floor(p.xz/4.);
+//   vec3 q=p;q.xz=mod(q.xz,4.)-2.;
+//   float h=.8+hash(id)*2.2;
+//   float w=.3+.05*KICK;
+//   float b=sdBox(q-vec3(0.,h-2.,0.),vec3(w,h,w));
+//   return min(b,p.y+2.);
+// }`,
+//     frag: /* glsl */ `
+// void main(){
+//   vec2 uv=cuv();
+//   vec3 ro=vec3(sin(uTime*.13)*.6,-.6+sin(uTime*.07)*.5,uTime*2.);
+//   vec3 ta=ro+vec3(sin(uTime*.1)*.8*uVar.x,.1,3.);
+//   vec3 rd=camera(ro,ta,sin(uTime*.05)*.15*uVar.y)*normalize(vec3(uv,1.5));
+//   float glow;float t=march(ro,rd,40.,glow);
+//   float emit=0.;
+//   if(t>0.){
+//     vec3 p=ro+rd*t;
+//     if(p.y<-1.99){
+//       vec2 g=abs(fract(p.xz*.5)-.5);
+//       emit=(1.-smoothstep(0.,.03,min(g.x,g.y)))*.35;
+//     } else {
+//       float bnd=fract(p.y*1.5-uBeats*.5);
+//       emit=step(bnd,.08)*(.4+1.2*KICK);
+//     }
+//   }
+//   fragColor=shade(ro,rd,t,40.,glow,emit);
+// }`,
+//   },
+  {
+    id: 'arches', name: 'Łuki', layer: 'depth', mood: 'drive',
+    map: /* glsl */ `
+float map(vec3 p){
+  float id=floor(p.z/2.5);
+  vec3 q=p;q.z=mod(q.z,2.5)-1.25;
+  q.xy*=rot(id*(.15+.3*uVar.x)+uBeats*.03);
+  float s=2.2;
+  float outer=sdBox(q,vec3(s,s,.12));
+  float inner=sdBox(q,vec3(s-.25,s-.25,1.));
+  return max(outer,-inner);
+}`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  vec3 ro=vec3(sin(uTime*.2)*.4,cos(uTime*.17)*.4,uTime*2.5);
+  vec3 rd=camera(ro,ro+vec3(0.,0.,3.),uTime*.05*(uVar.y-.5))*normalize(vec3(uv,1.3));
+  float glow;float t=march(ro,rd,45.,glow);
+  float emit=0.;
+  if(t>0.){
+    float id=floor((ro.z+rd.z*t)/2.5);
+    float wave=fract(id/8.-uBeats*.25);
+    emit=smoothstep(.12,0.,wave)*(.6+1.5*KICK)+KICK*.25;
+  }
+  fragColor=shade(ro,rd,t,45.,glow,emit);
+}`,
+  },
+  {
+    id: 'core', name: 'Rdzeń', layer: 'depth', mood: 'both',
+    map: /* glsl */ `
+float map(vec3 p){
+  p.xz*=rot(uTime*.15);p.xy*=rot(uTime*.1+uVar.x*3.);
+  float sc=1.+.06*KICK+.04*BASS;
+  p/=sc;
+  float d=sdBox(p,vec3(1.));
+  float s=1.;
+  for(int m=0;m<3;m++){
+    vec3 a=mod(p*s,2.)-1.;s*=3.;
+    vec3 r=abs(1.-3.*abs(a));
+    float da=max(r.x,r.y),db=max(r.y,r.z),dc=max(r.z,r.x);
+    d=max(d,(min(da,min(db,dc))-1.)/s);
+  }
+  return d*sc;
+}`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  float a=uTime*.1;
+  float dist=4.3+.5*sin(uTime*.07)-uVar.y*.8;
+  vec3 ro=vec3(sin(a)*dist,sin(uTime*.05)*1.2,cos(a)*dist);
+  vec3 rd=camera(ro,vec3(0.),0.)*normalize(vec3(uv,1.6));
+  float glow;float t=march(ro,rd,12.,glow);
+  float emit=0.;
+  if(t>0.){
+    vec3 p=ro+rd*t;
+    emit=smoothstep(.95,1.,fract(length(p)*2.-uBeats*.5))*(.5+1.2*KICK);
+  }
+  fragColor=shade(ro,rd,t,12.,glow,emit);
+}`,
+  },
+  {
+    id: 'field', name: 'Pole', layer: 'depth', mood: 'both',
+    map: /* glsl */ `
+float map(vec3 p){
+  vec2 id=floor(p.xz);
+  vec3 q=p;q.xz=fract(q.xz)-.5;
+  float h=sin(id.x*.45+uTime*.8)*cos(id.y*.35+uTime*.6)*.8*(.4+BASS)+hash(id)*.3;
+  float s=.3+.1*KICK*step(.7,hash(id+floor(uBeats)));
+  float b=sdBox(q-vec3(0.,h,0.),vec3(s))-.02;
+  return min(b*.8,.4); // sąsiednie kostki mają inne wysokości — krok ostrożny
+}`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  vec3 ro=vec3(uTime*.8,2.4+sin(uTime*.1)*.5+uVar.x,uTime*1.2);
+  vec3 ta=ro+vec3(1.,-1.3+uVar.y*.6,2.);
+  vec3 rd=camera(ro,ta,sin(uTime*.07)*.1)*normalize(vec3(uv,1.4));
+  float glow;float t=march(ro,rd,30.,glow);
+  float emit=0.;
+  if(t>0.){
+    vec3 p=ro+rd*t;
+    float on=step(.82,hash(floor(p.xz)+floor(uBeats)));
+    emit=on*(.25+1.4*KICK);
+  }
+  fragColor=shade(ro,rd,t,30.,glow,emit);
+}`,
+  },
+
+  {
+    id: 'rings', name: 'Pierścienie', layer: 'depth', mood: 'both',
+    map: /* glsl */ `
+float map(vec3 p){
+  float d=1e3;
+  for(int i=0;i<5;i++){
+    float fi=float(i);
+    vec3 q=p;
+    q.yz*=rot(uTime*(.2+fi*.07)+fi*.7+uVar.x*3.);
+    q.xy*=rot(uTime*(.13+fi*.05)*(mod(fi,2.)*2.-1.)+uBeats*.0625*PI*uVar.y);
+    d=min(d,sdTorus(q,vec2(.6+fi*.45,.035+.02*KICK)));
+  }
+  return d;
+}`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  float a=uTime*.06;
+  vec3 ro=vec3(sin(a)*5.5,1.2+sin(uTime*.05),cos(a)*5.5);
+  vec3 rd=camera(ro,vec3(0.),sin(uTime*.04)*.2)*normalize(vec3(uv,1.5+uVar.z*.6));
+  float glow;float t=march(ro,rd,14.,glow);
+  float emit=0.;
+  if(t>0.){
+    float r=length(ro+rd*t);
+    emit=exp(-pow(fract(uBeats*.25)*3.-r,2.)*8.)*(.4+1.2*KICK);
+  }
+  fragColor=shade(ro,rd,t,14.,glow,emit);
+}`,
+  },
+  {
+    id: 'spiral', name: 'Spirala', layer: 'depth', mood: 'drive',
+    map: /* glsl */ `
+float map(vec3 p){
+  p.xy*=rot(p.z*(.08+.12*uVar.x));
+  float sec=TAU/10.;
+  float a=atan(p.y,p.x);
+  a-=floor(a/sec+.5)*sec;
+  vec2 xy=vec2(cos(a),sin(a))*length(p.xy);
+  vec3 q=vec3(xy.x-2.2,xy.y,mod(p.z,1.2)-.6);
+  q.xz*=rot(uBeats*.25*PI*uVar.y);
+  return sdBox(q,vec3(.22+.08*KICK))*.8;
+}`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  vec3 ro=vec3(0.,0.,uTime*2.5);
+  vec3 rd=camera(ro,ro+vec3(sin(uTime*.1)*.4,cos(uTime*.13)*.4,3.),uTime*.03)*normalize(vec3(uv,1.2));
+  float glow;float t=march(ro,rd,35.,glow);
+  float emit=0.;
+  if(t>0.){
+    float zi=floor((ro.z+rd.z*t)/1.2);
+    emit=step(.85,hash(vec2(zi,floor(uBeats))))*(.3+1.4*KICK);
+  }
+  fragColor=shade(ro,rd,t,35.,glow,emit);
+}`,
+  },
+  {
+    id: 'mercury', name: 'Rtęć', layer: 'depth', mood: 'calm',
+    map: /* glsl */ `
+float map(vec3 p){
+  float d=length(p)-(.6+.15*KICK);
+  for(int i=0;i<6;i++){
+    float fi=float(i);
+    vec3 c=vec3(sin(uTime*.4+fi*1.7),sin(uTime*.33+fi*2.3)*.8,cos(uTime*.37+fi*1.1))*(.9+.3*uVar.x);
+    d=smin(d,length(p-c)-(.4+.1*sin(fi+uTime)+.12*BASS),.5+.2*uVar.y);
+  }
+  return d;
+}`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  float a=uTime*.08;
+  vec3 ro=vec3(sin(a)*4.5,sin(uTime*.06)*1.5,cos(a)*4.5);
+  vec3 rd=camera(ro,vec3(0.),0.)*normalize(vec3(uv,1.5));
+  float glow;float t=march(ro,rd,12.,glow);
+  float emit=0.;
+  if(t>0.){
+    vec3 p=ro+rd*t;
+    emit=smoothstep(.92,1.,sin(p.y*10.-uBeats*PI)*.5+.5)*(.2+1.*KICK);
+  }
+  fragColor=shade(ro,rd,t,12.,glow,emit);
+}`,
+  },
+  {
+    id: 'gyroid', name: 'Gyroid', layer: 'depth', mood: 'both',
+    map: /* glsl */ `
+vec2 path(float z){return vec2(sin(z*.15)*1.5,cos(z*.12)*1.2);}
+float map(vec3 p){
+  float s=1.2+uVar.x*.8;
+  vec3 q=p*s;
+  float g=(abs(dot(sin(q),cos(q.zxy)))-(.08+.14*uVar.y+.1*BASS))/s*.6;
+  float tube=1.2-length(p.xy-path(p.z)); // pusty kanał na trasie kamery
+  return max(g,tube);
+}`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  float z=uTime*1.8;
+  vec3 ro=vec3(path(z),z);
+  vec3 ta=vec3(path(z+2.),z+2.);
+  vec3 rd=camera(ro,ta,sin(uTime*.07)*.3)*normalize(vec3(uv,1.2));
+  float glow;float t=march(ro,rd,20.,glow);
+  float emit=0.;
+  if(t>0.){
+    float w=fract((ro.z+rd.z*t)*.2-uBeats*.25);
+    emit=(1.-smoothstep(0.,.06,abs(w-.5)))*(.5+1.2*KICK);
+  }
+  fragColor=shade(ro,rd,t,20.,glow,emit);
+}`,
+  },
+  {
+    id: 'crystal', name: 'Kryształ', layer: 'depth', mood: 'both',
+    map: /* glsl */ `
+float map(vec3 p){
+  p.xz*=rot(uTime*.12);p.yz*=rot(uTime*.09);
+  float sc=1.;
+  for(int i=0;i<4;i++){
+    p=abs(p);
+    if(p.x<p.y)p.xy=p.yx;
+    if(p.x<p.z)p.xz=p.zx;
+    if(p.y<p.z)p.yz=p.zy;
+    p.xy*=rot(.15+uVar.x*.4+.05*sin(uTime*.2));
+    p=p*2.-vec3(1.,.6+uVar.y*.3,.3);
+    sc*=2.;
+  }
+  return sdBox(p,vec3(.45+.15*KICK))/sc;
+}`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  float a=uTime*.07;
+  float dist=3.2+.4*sin(uTime*.05)+uVar.z*.8;
+  vec3 ro=vec3(sin(a)*dist,sin(uTime*.04)*1.,cos(a)*dist);
+  vec3 rd=camera(ro,vec3(0.),0.)*normalize(vec3(uv,1.5));
+  float glow;float t=march(ro,rd,10.,glow);
+  float emit=0.;
+  if(t>0.) emit=smoothstep(.95,1.,fract(length(ro+rd*t)*3.-uBeats*.5))*(.5+1.2*KICK);
+  fragColor=shade(ro,rd,t,10.,glow,emit);
+}`,
+  },
+
+  // =====================================================================
+  // GŁĘBIA — płaskie (alfa z jasności)
+  // =====================================================================
+  {
+    id: 'tunnel', name: 'Tunel', layer: 'depth', mood: 'drive',
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv();
+  p*=rot(uBeats*.03*(uVar.x-.5)*PI+sin(uTime*.05)*.2);
+  float sides=floor(3.+uVar.y*5.99);
+  float a=atan(p.y,p.x);
+  float seg=TAU/sides;
+  float r=cos(floor(.5+a/seg)*seg-a)*length(p);
+  float z=.3/max(r,1e-3);
+  float d=z+uTime*.5;
+  float rings=band(abs(fract(d*3.)-.5),.03+.12*KICK);
+  vec3 col=mix(uC2,uC1,.5+.5*sin(d*.35+uVar.z*6.))*rings;
+  float edge=abs(fract(a/seg)-.5)*seg*length(p);
+  col+=uC1*band(edge,.0015)*(.25+.6*uHigh*uReact);
+  col*=smoothstep(.02,.3,r)*(.45+.8*uInt);
+  col+=uC1*KICK*.12*smoothstep(.5,1.2,length(p));
+  fragColor=vec4(col,cover(col));
+}`,
+  },
+  {
+    id: 'grid', name: 'Korytarz', layer: 'depth', mood: 'drive',
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv();
+  p*=rot(sin(uTime*.1)*.1*uVar.x);
+  float y=p.y+(uVar.y-.5)*.2;
+  float z=.35/max(abs(y),1e-3);
+  vec2 g=vec2(p.x*z,z+uTime*1.5);
+  float gx=abs(fract(g.x)-.5),gy=abs(fract(g.y)-.5);
+  float l=max(band(gx,.03),band(gy,.03+.1*KICK));
+  float fade=smoothstep(0.,.35,abs(y));
+  vec3 col=uC1*l*fade*fade;
+  col+=uC2*exp(-abs(y)*18.)*(.4+.9*BASS+KICK);
+  col*=.5+.6*uInt;
+  fragColor=vec4(col,cover(col));
+}`,
+  },
+  {
+    id: 'kaleido', name: 'Kalejdoskop', layer: 'depth', mood: 'drive',
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv();
+  float n=floor(3.+uVar.x*7.);
+  float r=length(p),a=atan(p.y,p.x);
+  float seg=PI/n;
+  a=mod(a+uTime*.05,2.*seg);a=abs(a-seg);
+  p=vec2(cos(a),sin(a))*r;
+  p=p*(1.5+uVar.y*2.)+vec2(uTime*.15,0.);
+  p*=rot(.3+uVar.z*2.);
+  vec2 g=fract(p)-.5;
+  float sq=abs(max(abs(g.x),abs(g.y))-(.25+.12*sin(uBeats*PI*.5+r*3.)));
+  float l=band(sq,.015+.04*KICK);
+  float ci=band(abs(length(g)-.18),.01);
+  vec3 col=uC1*l+uC2*ci*.6;
+  col*=smoothstep(1.3,.1,r)*(.45+.6*uInt+.4*KICK);
+  fragColor=vec4(col,cover(col));
+}`,
+  },
+  {
+    id: 'orbit', name: 'Orbity', layer: 'depth', mood: 'both',
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv();
+  float r=length(p),a=atan(p.y,p.x);
+  float n=7.+floor(uVar.x*8.);
+  float rr=r*n,k=floor(rr);
+  float cnt=4.+k*(2.+floor(uVar.y*4.));
+  float dir=mod(k,2.)*2.-1.;
+  float stp=floor(uBeats)+smoothstep(0.,.35,fract(uBeats));
+  float aa=a/TAU*cnt+dir*(uTime*.15*(1.+k*.1)+stp*(.25+.5*uVar.z));
+  vec2 cell=vec2((fract(aa)-.5)*TAU*r/cnt,(fract(rr)-.5)/n);
+  float rad=(.14+.2*KICK)/n;
+  float dotv=1.-smoothstep(rad-px(),rad+px(),length(cell));
+  vec3 col=mix(uC1,uC2,mod(k,2.)*.7)*dotv;
+  col*=smoothstep(1.,.3,r)*(.5+.6*uInt);
+  fragColor=vec4(col,cover(col));
+}`,
+  },
+  {
+    id: 'pulse', name: 'Puls', layer: 'depth', mood: 'calm',
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv()*rot(uTime*.05);
+  float sides=floor(3.+uVar.x*4.99);
+  float a=atan(p.y,p.x),seg=TAU/sides;
+  float poly=cos(floor(.5+a/seg)*seg-a)*length(p);
+  float r=mix(length(p),poly,step(.5,uVar.y));
+  vec3 col=vec3(0.);
+  for(int i=0;i<6;i++){
+    float t=fract(uBeats*.25+float(i)/6.);
+    col+=mix(uC1,uC2,t)*band(abs(r-t*1.1),.002+.004*(1.-t))*(1.-t)*(1.-t);
+  }
+  float R0=.18+.03*BASS+.06*KICK;
+  col+=uC1*band(abs(r-R0),.004+.01*KICK)*(.7+.6*KICK);
+  col+=uC1*.25*exp(-r*r*40.)*(BASS*.5+KICK);
+  col*=.6+.5*uInt;
+  fragColor=vec4(col,cover(col));
+}`,
+  },
+
+  // =====================================================================
+  // GŁĘBIA — fraktale 3D
+  // =====================================================================
+  {
+    id: 'bulb', name: 'Mandelbulb', layer: 'depth', mood: 'both',
+    map: /* glsl */ `
+float map(vec3 p){
+  p.xz*=rot(uTime*.1);p.yz*=rot(.3+uTime*.07);
+  float sc=1.+.05*KICK;
+  p/=sc;
+  // "Moc" fraktala powoli oddycha; bas lekko ją podbija.
+  float pw=6.+uVar.x*3.+.8*sin(uTime*.08)+.6*BASS;
+  vec3 z=p;float dr=1.,r=length(z);
+  for(int i=0;i<6;i++){
+    r=length(z);
+    if(r>2.) break;
+    float th=acos(clamp(z.z/r,-1.,1.))*pw,ph=atan(z.y,z.x)*pw;
+    dr=pow(r,pw-1.)*pw*dr+1.;
+    z=pow(r,pw)*vec3(sin(th)*cos(ph),sin(ph)*sin(th),cos(th))+p;
+  }
+  return .5*log(max(r,1e-4))*r/dr*sc;
+}`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  float a=uTime*.05;
+  float dist=3.4+.3*sin(uTime*.06)-uVar.y*.5;
+  vec3 ro=vec3(sin(a)*dist,.4*sin(uTime*.04),cos(a)*dist);
+  vec3 rd=camera(ro,vec3(0.),0.)*normalize(vec3(uv,1.7));
+  float glow;float t=march(ro,rd,8.,glow);
+  float emit=0.;
+  if(t>0.) emit=smoothstep(.93,1.,fract(length(ro+rd*t)*4.-uBeats*.5))*(.5+1.3*KICK);
+  fragColor=shade(ro,rd,t,8.,glow,emit);
+}`,
+  },
+  {
+    id: 'apollo', name: 'Apollonius', layer: 'depth', mood: 'both',
+    map: /* glsl */ `
+float map(vec3 p){
+  float S=1.6+uVar.y*.8;
+  p/=S;
+  float s=1.;
+  float k0=1.15+.12*uVar.x+.04*BASS;
+  for(int i=0;i<7;i++){
+    p=-1.+2.*fract(.5*p+.5);
+    float k=k0/dot(p,p);
+    p*=k;s*=k;
+  }
+  return .25*abs(p.y)/s*S;
+}`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  float z=uTime*.35;
+  vec3 ro=vec3(.9+.2*sin(z*.3),.95+.2*cos(z*.23),z);
+  vec3 ta=ro+vec3(.3*sin(z*.2),.2*cos(z*.17),1.);
+  vec3 rd=camera(ro,ta,sin(uTime*.05)*.4)*normalize(vec3(uv,1.3));
+  float glow;float t=march(ro,rd,10.,glow);
+  float emit=0.;
+  if(t>0.){
+    float w=fract((ro.z+rd.z*t)*.5-uBeats*.25);
+    emit=(1.-smoothstep(0.,.05,abs(w-.5)))*(.4+1.2*KICK);
+  }
+  fragColor=shade(ro,rd,t,10.,glow,emit);
+}`,
+  },
+
+  // =====================================================================
+  // GŁĘBIA — organiczne 3D
+  // =====================================================================
+  // WYŁĄCZONE: Wodorosty — usuń "// " z poniższych linii, żeby przywrócić.
+//   {
+//     id: 'kelp', name: 'Wodorosty', layer: 'depth', mood: 'calm',
+//     map: /* glsl */ `
+// float map(vec3 p){
+//   vec2 id=floor(p.xz/2.);
+//   vec3 q=p;q.xz=mod(q.xz,2.)-1.;
+//   float h=hash(id);
+//   float sway=(p.y+2.)*.25; // im wyżej, tym mocniej faluje
+//   q.x+=sin(p.y*1.2+uTime*.8+h*6.)*.25*sway*(.6+.8*uVar.x)*(1.+BASS);
+//   q.z+=cos(p.y*.9+uTime*.6+h*4.)*.2*sway;
+//   float r=.12+.05*sin(p.y*4.-uTime*2.+h*10.)+.05*KICK;
+//   float d=max(length(q.xz)-r,p.y-(1.+h*(1.5+2.*uVar.y)));
+//   return min(d,p.y+2.)*.6;
+// }`,
+//     frag: /* glsl */ `
+// void main(){
+//   vec2 uv=cuv();
+//   vec3 ro=vec3(.15*sin(uTime*.2),-.6+.3*sin(uTime*.11),uTime*.8);
+//   vec3 ta=ro+vec3(.4*sin(uTime*.07),.35,3.);
+//   vec3 rd=camera(ro,ta,sin(uTime*.05)*.1)*normalize(vec3(uv,1.4));
+//   float glow;float t=march(ro,rd,22.,glow);
+//   float emit=0.;
+//   if(t>0.){
+//     vec3 p=ro+rd*t;
+//     if(p.y>-1.98){
+//       float h=hash(floor(p.xz/2.));
+//       emit=smoothstep(.85,1.,fract(p.y*.5-uBeats*.25+h))*(.4+1.2*KICK);
+//     }
+//   }
+//   fragColor=shade(ro,rd,t,22.,glow,emit);
+// }`,
+//   },
+  {
+    id: 'organism', name: 'Organizm', layer: 'depth', mood: 'both',
+    map: /* glsl */ `
+float map(vec3 p){
+  p.xz*=rot(uTime*.1);p.xy*=rot(uTime*.07);
+  float t=uTime*.6;
+  float disp=sin(3.*p.x+t)*sin(3.*p.y+t*1.3)*sin(3.*p.z+t*.7)*(.15+.1*uVar.x)
+            +sin(7.*p.x-t)*sin(6.*p.y+t)*sin(8.*p.z)*.05*(1.+BASS);
+  return (length(p)-(1.1+.12*KICK+.05*BASS)+disp)*.6;
+}`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  float a=uTime*.06;
+  float dist=3.9-uVar.y*.6;
+  vec3 ro=vec3(sin(a)*dist,.6*sin(uTime*.05),cos(a)*dist);
+  vec3 rd=camera(ro,vec3(0.),0.)*normalize(vec3(uv,1.6));
+  float glow;float t=march(ro,rd,10.,glow);
+  float emit=0.;
+  if(t>0.){
+    vec3 p=ro+rd*t;
+    float vein=abs(sin(5.*p.x+uTime*.4)*sin(5.*p.y-uTime*.3)*sin(5.*p.z));
+    emit=(1.-smoothstep(0.,.08,vein))*(.25+1.*KICK);
+  }
+  fragColor=shade(ro,rd,t,10.,glow,emit);
+}`,
+  },
+  {
+    id: 'artery', name: 'Arteria', layer: 'depth', mood: 'drive',
+    map: /* glsl */ `
+// Fala skurczu przesuwająca się wzdłuż tunelu w rytm beatu.
+float peri(float z){return exp(-pow((fract(z*.1-uBeats*.25)-.5)*6.,2.));}
+float map(vec3 p){
+  float a=atan(p.y,p.x),z=p.z;
+  float R=1.4+.5*uVar.y+.25*sin(z*.7+uTime*.5)+.12*sin(a*floor(3.+uVar.x*6.)+z*1.3)+.06*sin(a*11.-z*2.+uTime);
+  R-=.35*peri(z)*(.4+KICK);
+  return (R-length(p.xy))*.7;
+}`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  vec3 ro=vec3(.2*sin(uTime*.3),.2*cos(uTime*.25),uTime*1.5);
+  vec3 rd=camera(ro,ro+vec3(0.,0.,3.),sin(uTime*.1)*.3)*normalize(vec3(uv,1.2));
+  float glow;float t=march(ro,rd,25.,glow);
+  float emit=0.;
+  if(t>0.){
+    vec3 p=ro+rd*t;
+    float a=atan(p.y,p.x);
+    float veins=smoothstep(.9,1.,sin(a*6.+p.z*2.+sin(p.z)*2.)*.5+.5)*.3;
+    emit=veins+peri(p.z)*(.3+1.*KICK);
+  }
+  fragColor=shade(ro,rd,t,25.,glow,emit);
+}`,
+  },
+
+  // =====================================================================
+  // TŁO
+  // =====================================================================
+  {
+    id: 'julia', name: 'Julia', layer: 'back', mood: 'both',
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv()*(1.6-uVar.x*.4)*rot(uTime*.02);
+  float a=uTime*.05+uVar.y*6.;
+  vec2 c=vec2(-.8,.156)+.07*vec2(cos(a),sin(a*1.3));
+  vec2 z=p;float n=0.;
+  for(int k=0;k<64;k++){
+    z=vec2(z.x*z.x-z.y*z.y,2.*z.x*z.y)+c;
+    if(dot(z,z)>16.) break;
+    n+=1.;
+  }
+  vec3 col=uBg;
+  if(n<63.){
+    // Gładkie liczenie iteracji; pasma rozchodzą się od zbioru w rytm beatu.
+    float sm=n-log2(log2(dot(z,z)))+4.;
+    float bands=.5+.5*sin(sm*.35-uBeats*PI*.5);
+    col=mix(uC2,uC1,bands)*pow(clamp(sm/48.,0.,1.),.7)*(1.+.4*BASS+.3*KICK);
+  }
+  col*=.5+.5*uInt;
+  fragColor=vec4(col,1.);
+}`,
+  },
+  {
+    id: 'fog', name: 'Mgła', layer: 'back', mood: 'calm',
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv()*(1.2+uVar.x);
+  float t=uTime*.12;
+  vec2 q=vec2(fbm(p+vec2(0,t)),fbm(p+vec2(5.2,1.3)-t));
+  vec2 r=vec2(fbm(p+3.*q+vec2(1.7,9.2)+t*1.3),fbm(p+3.*q+vec2(8.3,2.8)-t));
+  float f=fbm(p+(2.5+2.*uVar.y)*r);
+  float lum=smoothstep(.35,.95,f);
+  vec3 col=mix(uBg,uC2,smoothstep(.2,.8,f));
+  col=mix(col,uC1,lum*lum*(.4+.9*BASS+.6*KICK));
+  col*=.55+.5*uInt;
+  fragColor=vec4(col,1.);
+}`,
+  },
+  {
+    id: 'glow', name: 'Poświata', layer: 'back', mood: 'both',
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv();
+  vec2 d=p-vec2(sin(uTime*.05)*.3+(uVar.y-.5)*.8,.75);
+  float r=length(d);
+  vec2 dir=d/max(r,1e-3);
+  float beams=noise(dir*(5.+uVar.x*8.)+vec2(uTime*.1,0.))*noise(dir*14.-vec2(0.,uTime*.08));
+  beams=smoothstep(.1,.6,beams);
+  vec3 col=mix(uC2,uC1,beams*.6)*beams*exp(-r*.9)*(.6+.6*BASS);
+  col+=uC1*exp(-r*r*6.)*.15;
+  col+=uC2*.08*fbm(p*2.+uTime*.05);
+  col*=.6+.5*uInt;
+  fragColor=vec4(col,1.);
+}`,
+  },
+  {
+    id: 'horizon', name: 'Horyzont', layer: 'back', mood: 'both',
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv();
+  float y=p.y+(uVar.x-.5)*.3;
+  float h=exp(-abs(y)*(3.+uVar.y*6.));
+  float n=fbm(vec2(p.x*1.5+uTime*.05,y*4.));
+  vec3 col=mix(uBg,uC2,h)*(.6+.8*n);
+  col+=uC1*exp(-abs(y)*40.)*(.25+.6*BASS+.5*KICK);
+  col*=.6+.5*uInt;
+  fragColor=vec4(col,1.);
+}`,
+  },
+  {
+    id: 'moire', name: 'Moiré', layer: 'back', mood: 'both',
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv()*rot(uTime*.03);
+  float t=uTime*.2;
+  vec2 o=vec2(sin(t*.7),cos(t*.53))*(.06+.22*uVar.x);
+  float f=(30.+uVar.y*60.)*(1.+.03*BASS);
+  float a=sin(length(p-o)*f-uBeats*PI*.5);
+  float b=sin(length(p+o)*f+uTime*.7);
+  float s1=smoothstep(-.35,.35,a),s2=smoothstep(-.35,.35,b);
+  float m=abs(s1-s2);
+  float v=smoothstep(1.1,.15,length(p));
+  vec3 col=(uC1*m*(.45+.45*uInt+.6*KICK)+uC2*s1*s2*.25)*v;
+  fragColor=vec4(col,1.);
+}`,
+  },
+  {
+    id: 'strata', name: 'Strata', layer: 'back', mood: 'both',
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv();
+  float cols=60.+uVar.x*120.;
+  float x=floor((p.x+2.)*cols);
+  float h=hash(vec2(x,floor(uVar.y*10.)));
+  float y=p.y*(1.+h*3.)+uTime*(.2+h*1.5)*(h>.5?1.:-1.);
+  float seg=noise(vec2(x*.37,y*2.));
+  float on=smoothstep(.55-.2*BASS,.75,seg);
+  float line=1.-smoothstep(.2,.45,abs(fract((p.x+2.)*cols)-.5));
+  vec3 col=mix(uC2,uC1,h)*on*line*(.35+.4*uInt+.8*KICK*step(.8,h));
+  fragColor=vec4(col,1.);
+}`,
+  },
+  {
+    id: 'lines', name: 'Skaner', layer: 'back', mood: 'drive',
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv();
+  p*=rot(floor(uVar.x*4.)*PI*.25);
+  float n=12.+uVar.y*40.;
+  float w=sin(p.x*2.5+uTime*.6)*.08*uVar.z+sin(p.x*9.-uTime*1.7)*.015*(.3+uMid*uReact);
+  float y=(p.y+w)*n+uBeats*.5;
+  float l=band(abs(fract(y)-.5),.04+.18*KICK);
+  float sweep=exp(-pow((p.y-(fract(uBeats*.25)*1.4-.7))*6.,2.));
+  vec3 col=uC1*l*(.3+.65*sweep+.3*KICK)+uC2*sweep*.15;
+  col+=uC1*l*hash(floor(gl_FragCoord.xy/2.)+floor(uTime*30.))*uHigh*uReact*.4;
+  col*=.5+.6*uInt;
+  fragColor=vec4(col,1.);
+}`,
+  },
+  {
+    id: 'void', name: 'Pustka', layer: 'back', mood: 'both',
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv();
+  vec2 o=(uVar.xy-.5)*vec2(.8,.4);
+  vec3 col=uBg+uC2*.06*exp(-dot(p-o,p-o)*(1.+uVar.z*4.))*(1.+BASS);
+  fragColor=vec4(col,1.);
+}`,
+  },
+  {
+    id: 'dust', name: 'Pył', layer: 'back', mood: 'both',
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv();
+  vec3 col=vec3(0.);
+  for(int i=0;i<4;i++){
+    float fi=float(i);
+    vec2 q=p*(6.+fi*5.)*(.6+uVar.z*.9)+vec2(uTime*(.08+fi*.05)*(uVar.x-.3),uTime*.03*fi)+fi*13.;
+    vec2 id=floor(q),f=fract(q)-.5;
+    float h=hash(id+fi);
+    vec2 o=vec2(hash(id+3.1),hash(id+7.7))-.5;
+    float r=(.03+.05*uVar.w)/(1.+fi*.8)*(1.+2.*KICK*step(.92,h));
+    float star=(1.-smoothstep(0.,r,length(f-o*.7)))*step(.45+.3*uVar.y,h);
+    col+=mix(uC2,uC1,h)*star*(1.2-fi*.2);
+  }
+  col*=.7+.5*uInt;
+  fragColor=vec4(col,1.);
+}`,
+  },
+  {
+    id: 'aurora', name: 'Zorza', layer: 'back', mood: 'calm',
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv();
+  vec3 col=vec3(0.);
+  for(int i=0;i<3;i++){
+    float fi=float(i);
+    float x=p.x*(1.2+fi*.4)+fi*3.;
+    float y=p.y-(.05+fi*.12-uVar.x*.2)-(.08+.14*uVar.y)*sin(x*1.3+uTime*.2+fi)-.08*sin(x*3.1-uTime*.3);
+    float c=y>0.?exp(-y*5.):exp(y*40.);
+    float streak=.4+.6*noise(vec2(x*9.,uTime*.3+fi));
+    col+=mix(uC1,uC2,fi*.5)*c*streak*(.3+.35*BASS);
+  }
+  col*=.6+.5*uInt;
+  fragColor=vec4(col,1.);
+}`,
+  },
+  {
+    id: 'raster', name: 'Raster', layer: 'back', mood: 'drive',
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv();
+  float n=40.+uVar.x*40.;
+  vec2 g=p*n,id=floor(g),f=fract(g)-.5;
+  float v=smoothstep(.3,.8,fbm(id/n*(1.+uVar.y*3.)+vec2(uTime*.05,0.)));
+  float w=exp(-pow(length(id/n)-fract(uBeats*.25)*1.5,2.)*30.);
+  float r=(v*.45+w*.3*(.5+KICK))*.5;
+  float dotv=1.-smoothstep(r-.05,r+.05,length(f));
+  vec3 col=mix(uC2,uC1,w)*dotv*(.45+.5*uInt);
+  fragColor=vec4(col,1.);
+}`,
+  },
+  {
+    id: 'contours', name: 'Izolinie', layer: 'back', mood: 'both',
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv()*(1.5+uVar.x);
+  float h=fbm(p+vec2(uTime*.04,-uTime*.03))+.1*BASS*sin(length(p)*6.-uBeats*PI*.5);
+  float n=14.+uVar.y*14.;
+  float l=band(abs(fract(h*n)-.5),.06);
+  vec3 col=mix(uC2,uC1,smoothstep(.3,.8,h))*l*(.4+.5*uInt+.3*KICK);
+  fragColor=vec4(col,1.);
+}`,
+  },
+  {
+    id: 'cells', name: 'Komórki', layer: 'back', mood: 'both',
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv()*(3.+uVar.x*3.);
+  vec2 i=floor(p),f=fract(p);
+  float d1=8.,d2=8.;
+  for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){
+    vec2 g=vec2(x,y);
+    vec2 h=vec2(hash(i+g),hash(i+g+17.3));
+    vec2 o=.5+.4*sin(uTime*.3+TAU*h);
+    float d=length(g+o-f);
+    if(d<d1){d2=d1;d1=d;} else if(d<d2) d2=d;
+  }
+  float wall=1.-smoothstep(0.,.04+.08*uVar.y+.05*BASS,d2-d1);
+  float nucleus=1.-smoothstep(0.,.12+.06*KICK,d1);
+  vec3 col=uC2*wall*.8+uC1*nucleus*.5+uC2*.12*(1.-d1);
+  col*=.5+.5*uInt;
+  fragColor=vec4(col,1.);
+}`,
+  },
+  {
+    id: 'turing', name: 'Turing', layer: 'back', mood: 'both',
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv()*(2.+uVar.x*2.);
+  vec2 w=vec2(fbm(p*.8+uTime*.03),fbm(p*.8+vec2(5.,3.)-uTime*.03));
+  float f=sin((p.x+w.x*2.5)*(8.+uVar.y*6.)+sin((p.y+w.y*2.5)*6.)*2.+uTime*.2);
+  float s=smoothstep(-.2,.2,f);
+  vec3 col=mix(uBg,mix(uC2,uC1,w.x),s)*(.4+.4*uInt)*(1.+.3*BASS+.2*KICK);
+  fragColor=vec4(col,1.);
+}`,
+  },
+  {
+    id: 'veins', name: 'Żyły', layer: 'back', mood: 'calm',
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv()*(1.5+uVar.x);
+  vec2 q=p+.3*vec2(fbm(p+uTime*.05),fbm(p-uTime*.04));
+  float v=0.,a=.5;vec2 pp=q*2.;
+  for(int i=0;i<4;i++){
+    v+=a*pow(1.-abs(noise(pp)*2.-1.),3.+uVar.y*6.); // "grzbiety" szumu = sieć naczyń
+    pp=rot(.6)*pp*2.1+3.1;a*=.5;
+  }
+  float pulse=.5+.5*sin(length(p)*6.-uBeats*PI*.5);
+  vec3 col=mix(uC2,uC1,pulse*v)*v*(.5+.6*BASS+.4*KICK)*(.5+.5*uInt);
+  fragColor=vec4(col,1.);
+}`,
+  },
+];
+
+export const DEPTH = SCENES.filter((s) => s.layer === 'depth');
+export const BACK = SCENES.filter((s) => s.layer === 'back');
+
+export const sceneSource = (sc) => COMMON + (sc.map ? sc.map + RAYMARCH : '') + sc.frag;
