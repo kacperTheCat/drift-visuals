@@ -15,7 +15,7 @@ export const BLENDS = [
 const STORE = 'drift.settings.v1';
 
 // Sceny, których shader faktycznie używa parametrów wariacji (uVar).
-export const VARIES = new Set(SCENES.filter((s) => /uVar\.[xyzw]/.test((s.map || '') + s.frag)).map((s) => s.id));
+export const VARIES = new Set(SCENES.filter((s) => s.sim || /uVar\.[xyzw]/.test((s.map || '') + s.frag)).map((s) => s.id));
 
 // Czy wariacja w warstwie ma sens: scena ją obsługuje i warstwa jest widoczna. Zwraca powód albo null.
 export function varyBlocked(d, layer) {

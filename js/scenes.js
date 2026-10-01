@@ -797,16 +797,19 @@ void main(){
   // =====================================================================
   {
     id: 'ferro', name: 'Ferrofluid', layer: 'depth', mood: 'drive',
-    // Czarna, lustrzana ciecz magnetyczna; na bas i stopę wyrastają z niej kolce.
+    // Czarna, lustrzana ciecz magnetyczna; pod nią powoli dryfuje magnes — kolce rosną tam,
+    // gdzie jest magnes, a ciecz lekko się za nim wybrzusza. Bas i stopa wydłużają kolce.
     map: /* glsl */ `
+vec2 magnet(){ return vec2(sin(uTime*.07)*.55,cos(uTime*.053+1.)*.5); }
 float map(vec3 p){
-  float r=length(p.xz);
-  float base=sdEll(p-vec3(0.,-.15,0.),vec3(1.25,.45,1.25));
+  vec2 m=magnet();
+  float r=length(p.xz-m);                                   // odległość od magnesu
+  float base=sdEll(p-vec3(m.x*.35,-.15,m.y*.35),vec3(1.25,.45+.08*(1.-smoothstep(0.,.8,length(p.xz-m))),1.25));
   vec2 c=vec2(.17);
   vec2 id=floor((p.xz+c*.5)/c);
   vec2 q=p.xz-id*c;
   float hh=.5+.5*hash(id);
-  float amp=(.2+.55*BASS+.45*KICK)*(1.-smoothstep(.2,1.15,r))*(.6+.4*hh);
+  float amp=(.2+.55*BASS+.45*KICK)*(1.-smoothstep(.1,.85,r))*(.6+.4*hh)*smoothstep(1.5,1.,length(p.xz));
   float spike=amp*pow(max(0.,1.-length(q)/.085),1.4);
   return (base-spike)*.45;
 }`,
@@ -878,37 +881,6 @@ void main(){
     emit=smoothstep(.8,1.,sin(aa*3.+log(r+.05)*9.-uTime*2.))*(.3+.8*KICK);
   }
   fragColor=shade(ro,rd,t,12.,glow,emit);
-}`,
-  },
-  {
-    id: 'crown', name: 'Korona z kropli', layer: 'depth', mood: 'drive',
-    // Na każdy beat kropla uderza w taflę: rośnie korona z kropelkami na czubkach, potem słup odbicia.
-    map: /* glsl */ `
-float map(vec3 p){
-  float age=fract(uBeats);
-  float r=length(p.xz),a=atan(p.z,p.x);
-  float lift=sin(age*PI);
-  float surf=p.y+.03*sin(r*22.-age*14.)*exp(-r*1.5)*(1.-age);
-  float R=.15+.55*age;
-  float tipH=lift*(.35+.15*KICK)*(1.+.25*sin(a*12.));
-  float wall=max(max(abs(r-R)-.02-.02*lift,p.y-tipH),-p.y-.05);
-  float sec=TAU/12.,ia=floor(a/sec+.5)*sec;
-  float drops=length(p-vec3(cos(ia)*R*1.05,tipH+.08*lift,sin(ia)*R*1.05))-.035*lift;
-  float j=smoothstep(.35,.7,age)*(1.-smoothstep(.75,1.,age))*.6;
-  float jet=sdSeg(p,vec3(0.),vec3(0.,j,0.),.05*(1.-age)+.012);
-  float d=smin(surf,wall,.05);
-  d=min(d,drops);
-  return smin(d,jet,.06)*.8;
-}`,
-    frag: /* glsl */ `
-void main(){
-  vec2 uv=cuv();
-  vec3 ro=vec3(sin(uTime*.05)*2.2,.75,cos(uTime*.05)*2.2);
-  vec3 rd=camera(ro,vec3(0.,.15,0.),0.)*normalize(vec3(uv,1.6));
-  float glow;float t=march(ro,rd,8.,glow);
-  float emit=0.;
-  if(t>0.) emit=(ro.y+rd.y*t)>.02?.25+.8*KICK:0.;
-  fragColor=shade(ro,rd,t,8.,glow,emit);
 }`,
   },
 
@@ -1444,6 +1416,17 @@ void main(){
   vec3 col=uBg+irid*mask*.5;
   fragColor=vec4(col*(.6+.5*uInt),1.);
 }`,
+  },
+  // ---- tła: symulacje (stan żyje między klatkami — liczone w js/sim.js) ----
+  {
+    id: 'fluidsim', name: 'Ciecz', layer: 'back', mood: 'both', sim: 'fluid', frag: '',
+    // Prawdziwa symulacja płynu: stopa wstrzykuje barwne wiry, bas stale delikatnie miesza.
+    // uVar: x = wielkość wirów, y = siła wstrzyknięcia, z = zawirowania, w = jak szybko barwnik gaśnie.
+  },
+  {
+    id: 'rdsim', name: 'Reakcja-dyfuzja', layer: 'back', mood: 'calm', sim: 'rd', frag: '',
+    // Wzory Turinga (Gray-Scott) rosną na żywo; stopa zasiewa nowe plamy.
+    // uVar: x = rodzaj wzoru (koral / plamy / robaki / komórki), y = tempo wzrostu.
   },
 ];
 

@@ -1,5 +1,8 @@
 // Renderer WebGL2: głębia (z przejściem scen i smugami) + tło (z przejściem) -> nakładanie warstw -> ekran.
 import { SCENES, sceneSource } from './scenes.js';
+import { createSim } from './sim.js';
+
+const SCENE_BY_ID = Object.fromEntries(SCENES.map((s) => [s.id, s]));
 
 const VERT = `#version 300 es
 in vec2 aPos; out vec2 vUv;
@@ -194,7 +197,9 @@ export class Engine {
 
     this.vs = this.shader(gl.VERTEX_SHADER, VERT, 'vertex');
     this.scenes = {};
+    this.sims = {}; // symulacje (sceny z pamięcią) — tworzone przy pierwszym użyciu
     for (const sc of SCENES) {
+      if (sc.sim) continue;
       try {
         this.scenes[sc.id] = this.program(sceneSource(sc), sc.id);
       } catch (e) {
@@ -293,6 +298,8 @@ export class Engine {
   // L = parametry warstwy: { int, react, flow, col: { bg, c1, c2 } }.
   drawScene(slot, f, L, tgt) {
     const gl = this.gl;
+    const sc = SCENE_BY_ID[slot.id];
+    if (sc?.sim) return this.drawSim(sc, slot, f, L, tgt);
     gl.bindFramebuffer(gl.FRAMEBUFFER, tgt.fbo);
     const pr = this.scenes[slot.id];
     if (!pr) {
@@ -318,6 +325,27 @@ export class Engine {
     f3('uC2', L.col.c2);
     if (u.uVar) gl.uniform4f(u.uVar, slot.v[0], slot.v[1], slot.v[2], slot.v[3]);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+
+  // Scena-symulacja: stan żyje między klatkami; przy błędzie (np. brak float) — czarny obraz.
+  drawSim(sc, slot, f, L, tgt) {
+    const gl = this.gl;
+    let sim = this.sims[sc.id];
+    if (sim === undefined) {
+      try {
+        sim = this.sims[sc.id] = createSim(sc.sim, this);
+      } catch (e) {
+        console.error(`Symulacja "${sc.id}": ${e.message}`);
+        this.errors[sc.id] = e.message;
+        sim = this.sims[sc.id] = null;
+      }
+    }
+    if (!sim) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, tgt.fbo);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      return;
+    }
+    sim.render(f, slot, L, tgt);
   }
 
   render(f) {

@@ -79,8 +79,8 @@ W trakcie odliczania autopilot nie zmienia scen. Przyciski dropu można przypisa
 - **Organiczne (druga seria):** Grzybnia (lot przez sieć włókien z impulsami), Muszla (spirala łodzika,
   kamera bez końca wkręca się do środka), Kręgosłup (wijący się łańcuch kręgów), Kosmki (tunel
   z falujących wypustek), Nasiona (wirujące strąki). Sceny bez klawisza (powyżej 21.) wybierasz kliknięciem.
-- **Płyny (koniec listy):** Ferrofluid (czarna ciecz, kolce rosną z basem i stopą), Lampa lawa,
-  Wir (lejek, obroty z basem), Korona z kropli (co beat kropla uderza w taflę).
+- **Płyny (koniec listy):** Ferrofluid (czarna ciecz; pod nią dryfuje magnes, kolce rosną tam, gdzie
+  jest magnes, i wydłużają się z basem i stopą), Lampa lawa, Wir (lejek, obroty z basem).
 - **Tło** (`G` / `Shift+G`): Mgła, Poświata, Horyzont, Moiré, Strata, Skaner, Pustka
   (prawie czarne — sama głębia na czerni), Pył, Zorza, Raster, Izolinie, Julia (płynący
   fraktal 2D, pasma rozchodzą się w rytm beatu), Tafla (spokojna ciemna woda: co beat
@@ -88,7 +88,10 @@ W trakcie odliczania autopilot nie zmienia scen. Przyciski dropu można przypisa
   plankton rozbłyska falą co 2 beaty), Atrament (gruby, lśniący tusz w dwóch warstwach), Słoje,
   Liść (obraca się, puls płynie żyłkami), Mitoza (komórki zlewają się błonami przy zetknięciu,
   dzielą z przewężeniem; każda płynie po własnym wektorze), Żyły (puls z wędrującego serca).
-  Płyny (koniec listy): Cymatyka (fale stojące z częstotliwości), Kaustyki, Marmurkowanie, Olej na wodzie.
+  Płyny (koniec listy): Cymatyka (fale stojące z częstotliwości), Kaustyki, Marmurkowanie, Olej na wodzie,
+  oraz symulacje (stan żyje między klatkami, `js/sim.js`): **Ciecz** — prawdziwa symulacja płynu, stopa
+  wstrzykuje barwne wiry, bas stale miesza; **Reakcja-dyfuzja** — wzory Turinga rosnące na żywo, stopa
+  zasiewa nowe plamy, wariacja zmienia rodzaj wzoru (koral / plamy / robaki / komórki).
   Tło prześwituje tam, gdzie głębia jest pusta albo ginie we mgle.
 - **Parametry per warstwa:** głębia ma Intensywność, Reaktywność, Ruch (prędkość, 100 = normalnie)
   i Smugi. Tło ma Jasność, Reaktywność i Ruch. Smugi działają tylko na głębi, więc tło zostaje ostre.
@@ -209,5 +212,6 @@ Kliknięcie w okno wyjścia włącza pełny ekran. Panel zostaje na laptopie.
 - `js/audio.js`: wejście audio, analiza pasm, detekcja stopy, zegar BPM, tryb demo
 - `js/director.js`: stan, autopilot, breakdown/drop, budowa klatki
 - `js/engine.js`: renderer (przejścia między scenami, feedback/smugi, flash, blackout)
+- `js/sim.js`: sceny-symulacje z pamięcią (ciecz, reakcja-dyfuzja)
 - `js/scenes.js`, `js/palettes.js`: treść wizualna
 - `js/main.js`, `js/keys.js`: panel, okno wyjścia i skróty
