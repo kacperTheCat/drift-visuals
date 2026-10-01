@@ -559,6 +559,7 @@ function runControl() {
       else if (d.level < -90) status += ' · brak sygnału?';
     }
     setText($('srcStatus'), status);
+    $('srcStatus').title = status;
 
     const ph = d.s.phrase;
     $('phraseProg').style.transform = `scaleX(${(((f.beats / 4) % ph) / ph).toFixed(3)})`;

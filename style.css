@@ -36,10 +36,11 @@ button.on kbd { color: #000; border-color: rgba(0,0,0,.3); }
 .brand { font-weight: 800; letter-spacing: .18em; font-size: 15px; }
 .brand span { font-weight: 400; color: var(--muted); letter-spacing: .1em; margin-left: 6px; font-size: 11px; }
 .group { display: flex; align-items: center; gap: 8px; min-width: 0; }
-#srcStatus, #midiStatus { flex-shrink: 1; min-width: 0; }
+#srcStatus, #midiStatus { flex: none; }
 @media (max-width: 1500px) { .brand span { display: none; } }
-.source select { max-width: 210px; }
-#srcStatus { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.source select { width: 210px; }
+/* stała szerokość statusów — zmiana tekstu nie przesuwa reszty paska */
+#srcStatus { width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .bpm { display: flex; align-items: baseline; }
 .bpm input {
   font: 600 22px ui-monospace, Menlo, monospace; width: 88px; text-align: right; color: var(--text);
@@ -177,7 +178,7 @@ body.bare .fps { display: none; }
 .col-live .stage { position: sticky; top: 0; z-index: 3; }
 
 /* --- MIDI --- */
-#midiStatus { font-size: 11px; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#midiStatus { font-size: 11px; width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #midiBtn.on { background: var(--accent); color: #000; }
 .learn-only { display: none; }
 body.midi-learn .learn-only { display: block; }

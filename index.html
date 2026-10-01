@@ -102,17 +102,6 @@
 
         </section>
 
-        <section>
-          <div class="row tight">
-            <button id="auto" class="toggle big">AUTOPILOT <kbd>Spacja</kbd></button>
-            <div class="seg" id="phrase" title="Zmiana co ile taktów">
-              <button data-v="8">8</button><button data-v="16">16</button><button data-v="32">32</button>
-            </div>
-          </div>
-          <div class="phrasebar"><b id="phraseProg"></b></div>
-          <label class="check"><input type="checkbox" id="autoPal"> Autopilot zmienia kolory</label>
-          <ul class="events" id="events"></ul>
-        </section>
 
         <!-- Widoczne tylko w trybie MIDI learn: akcje bez własnego przycisku w panelu -->
         <section class="learn-only">
@@ -179,6 +168,19 @@
           <label class="check"><input type="checkbox" id="linkPal"> Tło w kolorach głębi</label>
           <button id="aVaryBack" class="wide">Wariacja tła <kbd>⇧V</kbd></button>
           <label class="check"><input type="checkbox" id="autoBack"> Autopilot zmienia tło</label>
+        </section>
+
+        <section class="autosec">
+          <h2>Autopilot</h2>
+          <div class="row tight">
+            <button id="auto" class="toggle big">AUTOPILOT <kbd>Spacja</kbd></button>
+            <div class="seg" id="phrase" title="Zmiana co ile taktów">
+              <button data-v="8">8</button><button data-v="16">16</button><button data-v="32">32</button>
+            </div>
+          </div>
+          <div class="phrasebar"><b id="phraseProg"></b></div>
+          <label class="check"><input type="checkbox" id="autoPal"> Autopilot zmienia kolory</label>
+          <ul class="events" id="events"></ul>
         </section>
       </aside>
     </main>
