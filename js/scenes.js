@@ -880,6 +880,8 @@ void main(){
   },
   {
     id: 'veins', name: 'Żyły', layer: 'back', mood: 'calm',
+    // Sieć naczyń (grzbiety szumu), przez którą od "serca" płynie puls — ostre czoło, wygasający ogon.
+    // uVar: x = skala, y = ostrość naczyń, z = puls co 2 beaty / co beat, w = położenie serca.
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv()*(1.5+uVar.x);
@@ -889,8 +891,21 @@ void main(){
     v+=a*pow(1.-abs(noise(pp)*2.-1.),3.+uVar.y*6.); // "grzbiety" szumu = sieć naczyń
     pp=rot(.6)*pp*2.1+3.1;a*=.5;
   }
-  float pulse=.5+.5*sin(length(p)*6.-uBeats*PI*.5);
-  vec3 col=mix(uC2,uC1,pulse*v)*v*(.5+.6*BASS+.4*KICK)*(.5+.5*uInt);
+  // Puls płynie naczyniami: "czas dotarcia" = odległość od serca, zakrzywiona tak jak naczynia.
+  vec2 heart=(uVar.w-.5)*vec2(.8,.4);
+  float T=length(q-heart)*1.6+.3*fbm(q*3.);
+  float rate=uVar.z<.5?.5:1.;            // puls co 2 beaty albo co beat
+  float pulse=0.;
+  for(int k=0;k<3;k++){
+    float age=fract(uBeats*rate)+float(k); // ile pulsów temu wyszedł z serca
+    float d=T-age*1.3/rate*.5;              // >0: przed czołem fali, <0: za nim
+    float wave=d>0.?exp(-d*d*180.):exp(d*4.); // ostre czoło, wygasający ogon
+    pulse+=wave*exp(-age*.8)*(k==0?1.+1.2*KICK:1.);
+  }
+  vec3 col=uC2*v*.3;                                   // spokojne, stałe naczynia
+  col+=mix(uC2,uC1,.75)*v*pulse*1.6;                   // fala w naczyniach
+  col+=uC1*pow(v,3.)*pulse*1.4;                        // jasny rdzeń grubszych naczyń
+  col*=.55+.5*uInt;
   fragColor=vec4(col,1.);
 }`,
   },
