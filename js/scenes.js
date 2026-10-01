@@ -793,6 +793,126 @@ void main(){
   },
 
   // =====================================================================
+  // GŁĘBIA — płyny
+  // =====================================================================
+  {
+    id: 'ferro', name: 'Ferrofluid', layer: 'depth', mood: 'drive',
+    // Czarna, lustrzana ciecz magnetyczna; na bas i stopę wyrastają z niej kolce.
+    map: /* glsl */ `
+float map(vec3 p){
+  float r=length(p.xz);
+  float base=sdEll(p-vec3(0.,-.15,0.),vec3(1.25,.45,1.25));
+  vec2 c=vec2(.17);
+  vec2 id=floor((p.xz+c*.5)/c);
+  vec2 q=p.xz-id*c;
+  float hh=.5+.5*hash(id);
+  float amp=(.2+.55*BASS+.45*KICK)*(1.-smoothstep(.2,1.15,r))*(.6+.4*hh);
+  float spike=amp*pow(max(0.,1.-length(q)/.085),1.4);
+  return (base-spike)*.45;
+}`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  float a=uTime*.08;
+  vec3 ro=vec3(sin(a)*2.3,.95+uVar.y*.5,cos(a)*2.3);
+  vec3 rd=camera(ro,vec3(0.,.1,0.),0.)*normalize(vec3(uv,1.6));
+  float glow;float t=march(ro,rd,10.,glow);
+  if(t<0.){ fragColor=vec4(uC1*glow*.3,clamp(glow*.5,0.,1.)); return; }
+  vec3 p=ro+rd*t,n=calcNormal(p);
+  vec3 r=reflect(rd,n);
+  float env=smoothstep(-.2,.8,r.y);                                   // odbicie "nieba"
+  float spec=pow(max(dot(r,normalize(vec3(.5,.8,-.3))),0.),60.);
+  float rim=pow(1.-max(dot(n,-rd),0.),4.);
+  vec3 col=uBg*.5+uC2*env*.35+uC1*(spec*1.3+rim*.35);
+  fragColor=vec4(col*(.6+.6*uInt),1.);
+}`,
+  },
+  {
+    id: 'lavalamp', name: 'Lampa lawa', layer: 'depth', mood: 'calm',
+    // Miękkie bryły wosku unoszą się, łączą i opadają w szklanym walcu; ciepło świecą.
+    map: /* glsl */ `
+float map(vec3 p){
+  float d=1e3;
+  for(int i=0;i<7;i++){
+    float fi=float(i);
+    float sp=.15+.08*hash(vec2(fi,1.));
+    vec3 c=vec3(sin(uTime*.2+fi*2.3)*.4,sin(uTime*sp+fi*1.9)*1.3,cos(uTime*.17+fi*1.3)*.3);
+    d=smin(d,length(p-c)-(.17+.1*hash(vec2(fi,2.))+.04*BASS),.25);
+  }
+  d=smin(d,p.y+1.55,.5);
+  d=smin(d,1.55-p.y,.5);
+  d=max(d,length(p.xz)-1.);
+  return d*.8;
+}`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  vec3 ro=vec3(sin(uTime*.05)*.6,0.,4.2);
+  vec3 rd=camera(ro,vec3(0.),0.)*normalize(vec3(uv,1.7));
+  float glow;float t=march(ro,rd,10.,glow);
+  fragColor=shade(ro,rd,t,10.,glow,t>0.?.4+.4*KICK:0.);
+}`,
+  },
+  {
+    id: 'vortex', name: 'Wir', layer: 'depth', mood: 'both',
+    // Lejek wiru wciągający ciecz spiralą; obroty przyspieszają z basem, grzbiety świecą na stopę.
+    map: /* glsl */ `
+float wH(vec2 xz){
+  float r=length(xz),a=atan(xz.y,xz.x);
+  float funnel=-1.4/(1.+r*r*5.);
+  float sp=sin(a*3.+log(r+.05)*9.-uTime*2.);
+  return funnel+.05*sp*smoothstep(0.,.4,r)*(1.+BASS);
+}
+float map(vec3 p){ return (p.y-wH(p.xz))*.35; }`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  float a=uTime*.04;
+  vec3 ro=vec3(sin(a)*3.,1.8,cos(a)*3.);
+  vec3 rd=camera(ro,vec3(0.,-.6,0.),0.)*normalize(vec3(uv,1.5));
+  float glow;float t=march(ro,rd,12.,glow);
+  float emit=0.;
+  if(t>0.){
+    vec3 p=ro+rd*t;
+    float r=length(p.xz),aa=atan(p.z,p.x);
+    emit=smoothstep(.8,1.,sin(aa*3.+log(r+.05)*9.-uTime*2.))*(.3+.8*KICK);
+  }
+  fragColor=shade(ro,rd,t,12.,glow,emit);
+}`,
+  },
+  {
+    id: 'crown', name: 'Korona z kropli', layer: 'depth', mood: 'drive',
+    // Na każdy beat kropla uderza w taflę: rośnie korona z kropelkami na czubkach, potem słup odbicia.
+    map: /* glsl */ `
+float map(vec3 p){
+  float age=fract(uBeats);
+  float r=length(p.xz),a=atan(p.z,p.x);
+  float lift=sin(age*PI);
+  float surf=p.y+.03*sin(r*22.-age*14.)*exp(-r*1.5)*(1.-age);
+  float R=.15+.55*age;
+  float tipH=lift*(.35+.15*KICK)*(1.+.25*sin(a*12.));
+  float wall=max(max(abs(r-R)-.02-.02*lift,p.y-tipH),-p.y-.05);
+  float sec=TAU/12.,ia=floor(a/sec+.5)*sec;
+  float drops=length(p-vec3(cos(ia)*R*1.05,tipH+.08*lift,sin(ia)*R*1.05))-.035*lift;
+  float j=smoothstep(.35,.7,age)*(1.-smoothstep(.75,1.,age))*.6;
+  float jet=sdSeg(p,vec3(0.),vec3(0.,j,0.),.05*(1.-age)+.012);
+  float d=smin(surf,wall,.05);
+  d=min(d,drops);
+  return smin(d,jet,.06)*.8;
+}`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  vec3 ro=vec3(sin(uTime*.05)*2.2,.75,cos(uTime*.05)*2.2);
+  vec3 rd=camera(ro,vec3(0.,.15,0.),0.)*normalize(vec3(uv,1.6));
+  float glow;float t=march(ro,rd,8.,glow);
+  float emit=0.;
+  if(t>0.) emit=(ro.y+rd.y*t)>.02?.25+.8*KICK:0.;
+  fragColor=shade(ro,rd,t,8.,glow,emit);
+}`,
+  },
+
+  // =====================================================================
   // TŁO
   // =====================================================================
   {
@@ -1241,6 +1361,87 @@ void main(){
   col+=uC1*mem*(.42+.3*BASS)+uC1*mem2*body*.12;
   col+=uC1*exp(-max(field,0.)*22.)*.07;                         // poświata wokół błon
   col+=mix(uC2,uC1,.45)*min(nuc,1.)*(.55+.5*KICK);
+  fragColor=vec4(col*(.6+.5*uInt),1.);
+}`,
+  },
+  // ---- tła: płyny ----
+  {
+    id: 'cymatics', name: 'Cymatyka', layer: 'back', mood: 'both',
+    // Wzory fal stojących na drgającej cieczy (figury Chladniego); kształt zmienia się
+    // z częstotliwościami, bas zagęszcza linie, stopa wprawia piasek w drganie.
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv()*1.6;
+  float t=uTime*.08;
+  float n=3.+uVar.x*4.+1.5*sin(t)+uMid*uReact*1.5;
+  float m=2.+uVar.x*3.+1.2*cos(t*.7)+uHigh*uReact;
+  float sq=cos(n*PI*p.x)*cos(m*PI*p.y)-cos(m*PI*p.x)*cos(n*PI*p.y);   // płyta kwadratowa
+  float r=length(p),a=atan(p.y,p.x);
+  float ci=cos(n*2.2*r-t)*cos(floor(m+.5)*a);                           // płyta okrągła
+  float u=mix(sq,ci,uVar.y);
+  float line=exp(-abs(u)*(14.+10.*BASS));
+  float grain=hash(floor(gl_FragCoord.xy/1.5)+floor(uTime*20.));
+  vec3 col=uBg+uC2*.15*(1.-min(abs(u),1.))+uC1*line*(.5+.4*grain+.6*KICK);
+  col*=1.-.5*smoothstep(.8,1.6,r);
+  fragColor=vec4(col*(.6+.5*uInt),1.);
+}`,
+  },
+  {
+    id: 'caustics', name: 'Kaustyki', layer: 'back', mood: 'calm',
+    // Świetlne wzory jak na dnie basenu; stopa lekko je rozjaśnia.
+    frag: /* glsl */ `
+float caustic(vec2 uv,float t){
+  vec2 p=mod(uv*TAU,TAU)-250.,i=p;
+  float c=1.,inten=.005;
+  for(int n=0;n<5;n++){
+    float tt=t*(1.-(3.5/float(n+1)));
+    i=p+vec2(cos(tt-i.x)+sin(tt+i.y),sin(tt-i.y)+cos(tt+i.x));
+    c+=1./length(vec2(p.x/(sin(i.x+tt)/inten),p.y/(cos(i.y+tt)/inten)));
+  }
+  c/=5.;
+  c=1.17-pow(c,1.4);
+  return pow(abs(c),8.);
+}
+void main(){
+  vec2 p=cuv()*(.45+uVar.x*.4);
+  float c=caustic(p,uTime*.4+23.);
+  vec3 col=mix(uBg,uC2*.5,.6)+uC1*c*(.55+.4*KICK);
+  col*=1.-.4*smoothstep(.4,1.,length(cuv()));
+  fragColor=vec4(col*(.6+.5*uInt),1.);
+}`,
+  },
+  {
+    id: 'marbling', name: 'Marmurkowanie', layer: 'back', mood: 'calm',
+    // Farby na wodzie (ebru): pasma koloru przeczesywane grzebieniem; stopa mocniej czesze.
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv()*(1.2+uVar.x);
+  float t=uTime*.05;
+  vec2 q=p+.35*vec2(fbm(p*1.2+t),fbm(p*1.2-t+5.));
+  q.x+=.12*sin(q.y*10.+t*3.)*(1.+.8*KICK);
+  q.y+=.08*sin(q.x*6.-t*2.);
+  float b=q.y*(3.+uVar.y*3.)+.4*sin(q.x*2.+t);
+  float f=fract(b),id=floor(b);
+  float edge=1.-smoothstep(0.,.05,min(f,1.-f));
+  vec3 band=mix(uC2*.6,uC1*.7,step(.5,fract(id*.5)));
+  band=mix(band,uBg+uC2*.2,step(.66,fract(id*.333)));
+  vec3 col=band*(.75+.25*fbm(q*8.))-edge*.12;
+  fragColor=vec4(max(col,0.)*(.6+.5*uInt),1.);
+}`,
+  },
+  {
+    id: 'oil', name: 'Olej na wodzie', layer: 'back', mood: 'calm',
+    // Opalizujące smugi cienkiej warstwy oleju na ciemnej wodzie, w kolorach palety.
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv()*(1.+uVar.x);
+  float t=uTime*.04;
+  vec2 q=p+.5*vec2(fbm(p+t),fbm(p-t+3.));
+  float th=fbm(q*1.5+vec2(t,-t))*2.+.3*BASS;            // grubość warstwy oleju
+  float mask=smoothstep(.35,.6,fbm(q*.8+7.));
+  float k=14.+uVar.y*8.;
+  vec3 irid=uC1*(.5+.5*cos(th*k))+uC2*(.5+.5*cos(th*k+2.1))+mix(uC1,vec3(1.),.5)*.35*(.5+.5*cos(th*k+4.2));
+  vec3 col=uBg+irid*mask*.5;
   fragColor=vec4(col*(.6+.5*uInt),1.);
 }`,
   },
