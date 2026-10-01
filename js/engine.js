@@ -57,6 +57,28 @@ void shState(vec2 c, out float lp, out vec2 off, out float ang){
   off=vec2((r.y-.5)*.8*lp, -2.6*lp*lp); // lekko w bok i coraz szybciej w dół
   ang=(r.x-.5)*1.6*lp;
 }
+// Otchłań pod odłamkami: drobinki lecące z głębi (3 warstwy z paralaksą), wciągające się
+// pierścienie tunelu i poświata w środku — wszystko w kolorze akcentu, delikatnie.
+vec3 abyss(vec2 uv){
+  vec2 p=(uv-.5)*vec2(uAspect,1.);
+  float r=length(p);
+  vec3 col=uFlashCol*(.1*exp(-r*2.)+.025); // poświata w głębi + lekka mgła
+  for(int i=0;i<4;i++){
+    float fi=float(i);
+    float z=fract(uTime*.05+fi/4.);           // warstwa przybliża się i zaczyna od nowa
+    vec2 q=p*mix(9.,1.2,z)+fi*7.3;
+    vec2 id=floor(q), f=fract(q)-.5;
+    float h=h1(id.x*13.1+id.y*7.7+fi);
+    vec2 o=vec2(h1(id.x+id.y*3.1+fi*5.),h1(id.y-id.x*1.7+fi*9.))-.5;
+    float star=(1.-smoothstep(0.,.04+.05*z,length(f-o*.7)))*step(.5,h);
+    float fade=smoothstep(0.,.35,z)*(1.-smoothstep(.75,1.,z));
+    col+=uFlashCol*star*fade*(.35+.5*h);
+  }
+  float rings=pow(abs(sin(log(r+.02)*7.-uTime*.35)),30.)*smoothstep(.05,.5,r);
+  col+=uFlashCol*rings*.14;
+  return col*smoothstep(.04,.3,uShatter);
+}
+
 // Zwraca współrzędne źródłowe (xy) i jasność odłamka (z); z<0 = szczelina / pusto. w = bliskość rysy.
 vec4 shatter(vec2 uv){
   vec2 p=vec2(uv.x*uAspect,uv.y)*SH_N;
@@ -126,7 +148,7 @@ void main(){
     vec4 sh=shatter(uv);
     uv=sh.xy; shFade=sh.z; shCrack=sh.w;
   }
-  if(shFade<0.) c=vec3(0.);
+  if(shFade<0.) c=abyss(vUv);
   else if(uGlitch>.001){
     float g=uGlitch, sd=uGSeed;
     // poziome pasy przesunięte w bok
@@ -146,9 +168,12 @@ void main(){
     if(h1(sd*2.3)>.85) c=mix(c,1.-c,.8*g);
   } else c=layers(uv);
   if(shFade>=0.){
-    // świecące rysy na początku pękania, potem odłamki gasną
+    // świecące rysy na początku pękania; potem krawędzie odłamków lekko świecą,
+    // a odłamki gasną w otchłań
     float glowCrack=shCrack*smoothstep(0.,.06,uShatter)*(1.-smoothstep(.25,.6,uShatter));
-    c=c*shFade+uFlashCol*glowCrack*.9;
+    float rim=shCrack*smoothstep(.2,.5,uShatter)*.55*shFade;
+    if(uShatter>.001) c=mix(abyss(vUv),c,shFade);
+    c+=uFlashCol*(glowCrack*.9+rim);
   }
 
   vec2 v=vUv-.5; c*=1.-dot(v,v)*.9;
