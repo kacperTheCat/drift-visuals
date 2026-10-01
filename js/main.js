@@ -153,18 +153,32 @@ function runControl() {
       list = await d.audio.devices();
     } catch {}
     sel.innerHTML = '';
-    const demo = new Option('Demo — bez dźwięku (zegar BPM)', 'demo');
-    sel.append(demo);
-    list.forEach((dev, i) => sel.append(new Option(dev.label || `Wejście audio ${i + 1}`, dev.deviceId)));
+    sel.append(new Option('Demo — bez dźwięku (zegar BPM)', 'demo'));
+    // Bez zgody na mikrofon przeglądarka nie podaje nazw urządzeń — wybór pozycji poprosi o zgodę.
+    list.forEach((dev, i) =>
+      sel.append(new Option(dev.label || `Mikrofon / wejście audio ${list.length > 1 ? i + 1 : ''} (poprosi o zgodę)`, dev.deviceId)),
+    );
+    if (d.source === 'file') sel.append(new Option(`▶ ${d.audio.label}`, '__playing'));
+    sel.append(new Option('Plik audio… (do prób w domu)', '__file'));
     if (d.source === 'demo') sel.value = 'demo';
+    else if (d.source === 'file') sel.value = '__playing';
     else if (d.source === 'input') sel.value = d.s.deviceId || list[0]?.deviceId || 'demo';
     if (!sel.value) sel.value = 'demo';
   }
   navigator.mediaDevices?.addEventListener?.('devicechange', refreshDevices);
   refreshDevices();
 
-  $('connect').addEventListener('click', async () => {
+  // Wybór z listy od razu przełącza źródło (to też "akcja użytkownika", więc przeglądarka
+  // pozwala uruchomić dźwięk i zapytać o mikrofon).
+  sel.addEventListener('change', async () => {
     const v = sel.value;
+    sel.blur();
+    if (v === '__playing') return;
+    if (v === '__file') {
+      $('file').click();
+      refreshDevices(); // lista wraca do bieżącego źródła, dopóki nie wybierzesz pliku
+      return;
+    }
     if (v === 'demo') d.useDemo();
     else {
       try {
@@ -179,6 +193,7 @@ function runControl() {
     const f = e.target.files[0];
     if (f) d.useFile(f);
     e.target.value = '';
+    refreshDevices();
   });
   // Ostatnio używane wejście — spróbuj podłączyć od razu (uprawnienie jest zapamiętane dla localhost).
   if (d.s.deviceId) d.useInput(d.s.deviceId).then(refreshDevices).catch(() => {});

@@ -19,17 +19,18 @@ daje dostęp do wejścia audio tylko w bezpiecznym kontekście.
 
 1. **Kabel z miksera → interfejs audio.** Wyjście Booth / Rec / Master 2 z miksera
    podłącz do dowolnego interfejsu USB (albo do wejścia kontrolera, jeśli je ma).
-   W DRIFT wybierz to wejście i kliknij „Połącz”. Sygnał jest czysty, bez hałasu sali
+   W DRIFT wybierz to wejście z listy w górnym pasku (wybór od razu podłącza). Sygnał jest czysty, bez hałasu sali
    i bez sprzężeń, a do tego niezależny od głośności w klubie.
 2. **Grasz z laptopa (Rekordbox / Traktor / Serato na tym samym Macu):** zainstaluj
    [BlackHole 2ch](https://existential.audio/blackhole/) (darmowy). W „Audio MIDI Setup”
    utwórz „Multi-Output Device” (kontroler + BlackHole) albo w programie DJ wyślij master
-   na BlackHole. W DRIFT wybierz „BlackHole 2ch”.
+   na BlackHole. W DRIFT wybierz z listy „BlackHole 2ch”.
 3. **Mikrofon (awaryjnie):** też działa. Przetwarzanie „rozmowowe” przeglądarki
    (redukcja szumu, AGC, echo) jest wyłączone, każde pasmo ma własną automatyczną
    normalizację, a stopa wykrywana jest tylko w paśmie sub (35–110 Hz), które
    w klubie dominuje. Test na syntetycznym sygnale przy −82 dB wykrył 28/28 stóp.
-4. **Bez dźwięku:** tryb Demo i `TAP` (T). Wizualizacje dalej chodzą w tempie,
+4. **Bez dźwięku:** tryb Demo i `TAP` (T). Do prób w domu wybierz z listy „Plik audio…” — DRIFT
+   odtworzy nagranie i zareaguje na nie jak na żywe audio. Wizualizacje dalej chodzą w tempie,
    a zegar sam trzyma BPM.
 
 Na dłuższy set warto kliknąć `SYNC 1` (Enter) na pierwszą stopę frazy. Autopilot

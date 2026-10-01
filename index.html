@@ -12,9 +12,8 @@
       <div class="brand">DRIFT<span>visuals</span></div>
 
       <div class="group source">
-        <select id="device" title="Źródło dźwięku"></select>
-        <button id="connect">Połącz</button>
-        <label class="btn" title="Odtwórz plik audio (do prób w domu)">Plik…<input type="file" id="file" accept="audio/*" hidden></label>
+        <select id="device" title="Źródło dźwięku — wybór od razu podłącza"></select>
+        <input type="file" id="file" accept="audio/*" hidden>
         <span id="srcStatus" class="muted"></span>
       </div>
 
@@ -92,15 +91,6 @@
           </div>
         </section>
 
-        <section>
-          <h2>Warstwy</h2>
-          <div class="xf">
-            <span>TŁO</span><input type="range" id="balance" min="0" max="1000" title="Balans (← →, ↓ = środek)"><span>GŁĘBIA</span>
-          </div>
-          <div class="seg wide" id="blend" title="Nakładanie głębi na tło (M)"></div>
-          <label class="check"><input type="checkbox" id="autoBlend"> Autopilot zmienia nakładanie</label>
-
-        </section>
 
 
         <!-- Widoczne tylko w trybie MIDI learn: akcje bez własnego przycisku w panelu -->
@@ -143,11 +133,20 @@
           </div>
           <button id="aVary" class="wide">Wariacja głębi <kbd>V</kbd></button>
           <button id="aDepth" class="toggle wide">Głębia widoczna <kbd>L</kbd></button>
-          <div class="chips">
+          <div class="chips quality">
             <span class="lbl">Jakość obrazu</span>
             <button id="qFxaa" title="Wygładza schodki na krawędziach scen 3D (tanie)">Wygładzanie krawędzi</button>
             <button id="qHiRes" title="Sceny liczone w 1,5× wyższej rozdzielczości — najwięcej detalu, ok. 2× większe obciążenie karty graficznej">Wysoka rozdzielczość</button>
           </div>
+        </section>
+        <section>
+          <h2>Warstwy</h2>
+          <div class="xf">
+            <span>TŁO</span><input type="range" id="balance" min="0" max="1000" title="Balans (← →, ↓ = środek)"><span>GŁĘBIA</span>
+          </div>
+          <div class="seg wide" id="blend" title="Nakładanie głębi na tło (M)"></div>
+          <label class="check"><input type="checkbox" id="autoBlend"> Autopilot zmienia nakładanie</label>
+
         </section>
       </aside>
 
