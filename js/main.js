@@ -1,4 +1,4 @@
-import { Director, BLENDS, varyBlocked } from './director.js';
+import { Director, BLENDS, RANDOM, varyBlocked } from './director.js';
 import { Engine } from './engine.js';
 import { SCENES, DEPTH, BACK } from './scenes.js';
 import { PALETTES } from './palettes.js';
@@ -14,6 +14,21 @@ function fatal(msg) {
   h.hidden = false;
   h.classList.add('error');
   h.textContent = msg;
+}
+
+// Licznik klatek: wygładzony czas między klatkami (ms) -> FPS.
+class FpsMeter {
+  constructor() {
+    this.dt = 1000 / 60;
+    this.last = 0;
+  }
+  tick(now) {
+    if (this.last) this.dt += (Math.min(now - this.last, 250) - this.dt) * 0.05;
+    this.last = now;
+  }
+  get fps() {
+    return 1000 / this.dt;
+  }
 }
 
 function toggleFullscreen() {
@@ -53,10 +68,13 @@ function runOutput() {
   let shown = performance.now();
   document.addEventListener('mousemove', () => (shown = performance.now()));
 
+  const meter = new FpsMeter();
   function loop() {
     const d = getDir();
+    meter.tick(performance.now());
     if (d) {
       engine.render(d.tick());
+      d.outFps = { fps: meter.fps, ms: meter.dt, at: Date.now() };
       const idle = performance.now() - shown > 2500;
       hint.hidden = !!document.fullscreenElement || idle;
       hint.textContent = 'Przeciągnij to okno na projektor i kliknij — pełny ekran';
@@ -279,6 +297,33 @@ function runControl() {
       if (v) d.toggleDropOpt(group, v);
     });
 
+  // --- program dropu: co wejdzie w momencie dropu ---
+  const opt = (v, t) => `<option value="${v}">${t}</option>`;
+  const progSel = {
+    scene: [$('dpScene'), opt(RANDOM, '🎲 losowa') + DEPTH.map((s) => opt(s.id, s.name)).join('')],
+    back: [$('dpBack'), opt(RANDOM, '🎲 losowe') + BACK.map((s) => opt(s.id, s.name)).join('')],
+    pal: [$('dpPal'), opt(RANDOM, '🎲 losowe') + PALETTES.map((p, i) => opt(i, p.name)).join('')],
+    palBack: [$('dpPalBack'), opt(RANDOM, '🎲 losowe') + PALETTES.map((p, i) => opt(i, p.name)).join('')],
+  };
+  for (const [key, [el, html]] of Object.entries(progSel)) {
+    el.innerHTML = html;
+    el.addEventListener('change', () => {
+      d.setDropProg(key, el.value);
+      el.blur();
+    });
+  }
+  // Pole bez programu pokazuje to, co gra teraz; zaprogramowane — wybraną wartość (podświetlone).
+  function updateDropProg() {
+    const current = { scene: d.dp.cur.id, back: d.bk.cur.id, pal: d.s.palette, palBack: d.backPaletteIndex };
+    for (const [key, [el]] of Object.entries(progSel)) {
+      if (document.activeElement === el) continue;
+      const v = d.dropProg[key];
+      const show = String(v ?? current[key]);
+      if (el.value !== show) el.value = show;
+      el.classList.toggle('prog', v !== null);
+    }
+  }
+
   // --- dodatkowe akcje MIDI (widoczne w trybie learn) ---
   $('mPrevScene').addEventListener('click', () => d.stepScene(-1));
   $('mNextScene').addEventListener('click', () => d.stepScene(1));
@@ -490,6 +535,7 @@ function runControl() {
 
   function updateUI(f) {
     updateDrop(f);
+    updateDropProg();
     if (midi.access && ++uiFrame % 30 === 0) midi.status(); // odświeża m.in. wskaźnik CLOCK
     if (document.activeElement !== bpmIn) bpmIn.value = d.clock.bpm.toFixed(1);
     const beat = Math.floor(f.beats) % 4;
@@ -575,7 +621,22 @@ function runControl() {
     }
   }
 
+  const meter = new FpsMeter();
+  const fpsEl = $('fps');
+  let fpsShown = 0;
+  function updateFps(now) {
+    meter.tick(now);
+    if (now - fpsShown < 500) return; // odświeżanie 2× na sekundę, żeby dało się przeczytać
+    fpsShown = now;
+    const out = d.outFps && Date.now() - d.outFps.at < 1500 ? d.outFps : null;
+    const m = out || { fps: meter.fps, ms: meter.dt };
+    fpsEl.textContent = `${out ? 'WYJŚCIE ' : ''}${Math.round(m.fps)} fps · ${m.ms.toFixed(1)} ms`;
+    fpsEl.classList.toggle('mid', m.fps < 55 && m.fps >= 40);
+    fpsEl.classList.toggle('low', m.fps < 40);
+  }
+
   function loop() {
+    updateFps(performance.now());
     const f = d.tick();
     // Gdy okno wyjścia jest otwarte, podgląd renderujemy w niższej rozdzielczości.
     engine.scale = outWin && !outWin.closed ? 0.5 : 1;

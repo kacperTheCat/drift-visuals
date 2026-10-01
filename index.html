@@ -52,6 +52,7 @@
         <section class="stage">
           <canvas id="view"></canvas>
           <div class="overlay" id="overlay"></div>
+          <div class="fps" id="fps" title="Klatki na sekundę (i czas klatki). Z otwartym oknem wyjścia — FPS projektora."></div>
           <div class="hint" id="hint" hidden></div>
         </section>
 
@@ -69,20 +70,25 @@
 
         <section>
           <h2>Drop <small class="muted">D = uzbrój / anuluj</small></h2>
-          <div class="row tight">
-            <span class="lbl">Za ile taktów</span>
-            <div class="seg wide" id="dropIn">
+          <div class="row tight droprow">
+            <div class="seg" id="dropIn" title="Drop za ile taktów (ponowny klik = anuluj)">
               <button data-v="1">1</button><button data-v="4">4</button><button data-v="8">8</button><button data-v="16">16</button>
             </div>
+            <div class="dropbar"><b id="dropProg"></b><span id="dropLabel">nieuzbrojony</span></div>
           </div>
-          <div class="dropbar"><b id="dropProg"></b><span id="dropLabel">nieuzbrojony</span></div>
           <div class="chips" id="dropBuild">
             <span class="lbl">Narastanie</span>
             <button data-v="blur">Rozmycie</button><button data-v="accel">Przyspieszenie</button><button data-v="dark">Ściemnianie</button><button data-v="strobe">Strobo</button><button data-v="glitch">Glitch</button><button data-v="shatter">Rozpad</button>
           </div>
+          <div class="dropprog" title="Co wejdzie w momencie dropu. Domyślnie to, co gra teraz (bez zmian); zaprogramowane pole jest podświetlone.">
+            <label>Głębia<select id="dpScene"></select></label>
+            <label>Tło<select id="dpBack"></select></label>
+            <label>Kolory głębi<select id="dpPal"></select></label>
+            <label>Kolory tła<select id="dpPalBack"></select></label>
+          </div>
           <div class="chips" id="dropHit">
             <span class="lbl">Na dropie</span>
-            <button data-v="scene">Nowa scena</button><button data-v="vary">Wariacja</button><button data-v="flash">Flash</button><button data-v="palette">Kolory</button><button data-v="back">Tło</button>
+            <button data-v="vary">Wariacja</button><button data-v="flash">Flash</button>
           </div>
         </section>
 
@@ -93,11 +99,7 @@
           </div>
           <div class="seg wide" id="blend" title="Nakładanie głębi na tło (M)"></div>
           <label class="check"><input type="checkbox" id="autoBlend"> Autopilot zmienia nakładanie</label>
-          <div class="chips">
-            <span class="lbl">Jakość obrazu</span>
-            <button id="qFxaa" title="Wygładza schodki na krawędziach scen 3D (tanie)">Wygładzanie krawędzi</button>
-            <button id="qHiRes" title="Sceny liczone w 1,5× wyższej rozdzielczości — najwięcej detalu, ok. 2× większe obciążenie karty graficznej">Wysoka rozdzielczość</button>
-          </div>
+
         </section>
 
         <section>
@@ -152,6 +154,11 @@
           </div>
           <button id="aVary" class="wide">Wariacja głębi <kbd>V</kbd></button>
           <button id="aDepth" class="toggle wide">Głębia widoczna <kbd>L</kbd></button>
+          <div class="chips">
+            <span class="lbl">Jakość obrazu</span>
+            <button id="qFxaa" title="Wygładza schodki na krawędziach scen 3D (tanie)">Wygładzanie krawędzi</button>
+            <button id="qHiRes" title="Sceny liczone w 1,5× wyższej rozdzielczości — najwięcej detalu, ok. 2× większe obciążenie karty graficznej">Wysoka rozdzielczość</button>
+          </div>
         </section>
       </aside>
 

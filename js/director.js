@@ -3,6 +3,7 @@ import { AudioIn, Analysis, Clock, Demo } from './audio.js';
 import { SCENES, DEPTH, BACK } from './scenes.js';
 import { PALETTES } from './palettes.js';
 
+export const RANDOM = '__random'; // wartość "losowa" w programie dropu
 export const TRANSITIONS = { cut: 0, beat: 1, bar: 4, phrase: 16 }; // w beatach
 // Tryby nakładania głębi na tło (kolejność = numer trybu w shaderze kompozycji).
 export const BLENDS = [
@@ -62,7 +63,7 @@ export class Director {
         // ręczny drop: co narasta w trakcie odliczania i co się dzieje w momencie dropu
         dropBars: 4,
         dropBuild: { blur: true, accel: true, dark: false, strobe: true, glitch: false, shatter: false },
-        dropHit: { scene: true, vary: true, flash: true, palette: false, back: false },
+        dropHit: { vary: true, flash: true },
         transition: 'bar',
         phrase: 16,
         autopilot: true,
@@ -86,6 +87,8 @@ export class Director {
     if (!PALETTES[this.s.backPalette]) this.s.backPalette = 0;
     if (!BLENDS.some(([m]) => m === this.s.blend)) this.s.blend = 'normal';
     this.drop = null; // uzbrojony drop: { bars, from, at } (w beatach)
+    // Program dropu: co ma wejść w momencie dropu. null = bez zmian (zostaje to, co gra teraz).
+    this.dropProg = { scene: null, back: null, pal: null, palBack: null };
 
     // Każda warstwa: bieżąca scena + poprzednia (w trakcie przejścia, p = postęp 0..1).
     this.dp = { cur: this.slot(DEPTH[0].id), prev: null, p: 1, beats: 4 };
@@ -438,22 +441,30 @@ export class Director {
     this.set(g, { ...this.s[g], [key]: !this.s[g][key] });
   }
 
+  // Ustawienie pola programu dropu; wybranie tego, co gra teraz = brak zmiany (null).
+  setDropProg(key, value) {
+    const current = { scene: this.dp.cur.id, back: this.bk.cur.id, pal: this.s.palette, palBack: this.backPaletteIndex }[key];
+    if (value !== RANDOM && (key === 'pal' || key === 'palBack')) value = +value;
+    this.dropProg[key] = value === current ? null : value;
+  }
+
   fireDrop() {
     const h = this.s.dropHit;
+    const pg = this.dropProg;
     this.drop = null;
     this.state = 'groove';
     this.depthOn = true;
     this.bal = this.s.balance;
-    if (h.scene) this.setScene(this.pick('drive'), 'cut', true);
+    // zaprogramowane zmiany (cięcie)
+    if (pg.scene) this.setScene(pg.scene === RANDOM ? this.pick('drive') : pg.scene, 'cut', true);
+    if (pg.back) this.setBack(pg.back === RANDOM ? this.pick(null, 'back') : pg.back, 0);
+    if (pg.pal !== null) pg.pal === RANDOM ? this.randomPalette('depth') : this.setPalette(pg.pal, 'depth');
+    if (pg.palBack !== null) pg.palBack === RANDOM ? this.randomPalette('back') : this.setPalette(pg.palBack, 'back');
+    this.dropProg = { scene: null, back: null, pal: null, palBack: null };
     if (h.vary) {
       this.vary(1);
       this.vary(1, 'back');
     }
-    if (h.palette) {
-      this.randomPalette('depth');
-      if (!this.s.linkPalettes) this.randomPalette('back');
-    }
-    if (h.back) this.setBack(this.pick(null, 'back'), 0);
     if (h.flash) this.flash = 1;
     this.kick = 1;
     // rozpad (ręczny i z narastania) — obraz składa się natychmiast

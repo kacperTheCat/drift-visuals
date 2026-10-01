@@ -105,7 +105,7 @@ button.wide { width: 100%; margin-top: 8px; padding: 6px; }
 .phrasebar b { display: block; height: 100%; background: var(--accent); transform-origin: left; transform: scaleX(0); }
 .check { display: flex; align-items: center; gap: 6px; margin-top: 6px; color: var(--muted); font-size: 12px; }
 .events { list-style: none; margin: 6px 0 0; padding: 0; font: 11px ui-monospace, Menlo, monospace; color: var(--muted); }
-.events li:nth-child(n+4) { display: none; }
+.events li:nth-child(n+3) { display: none; }
 .events li:first-child { color: var(--text); }
 
 .xf { display: flex; align-items: center; gap: 8px; font: 700 10px ui-monospace, Menlo, monospace; color: var(--muted); }
@@ -148,7 +148,9 @@ footer {
 body.showkeys footer { display: flex; }
 
 /* --- drop --- */
-#dropIn { margin-top: 0; flex: 1; }
+#dropIn { margin-top: 0; }
+.droprow .dropbar { flex: 1; margin-top: 0; height: 26px; }
+.droprow .dropbar span { line-height: 26px; }
 .dropbar { position: relative; height: 18px; margin-top: 7px; background: #1b1b20; border-radius: var(--radius); overflow: hidden; }
 .dropbar b { position: absolute; inset: 0; background: var(--accent); transform-origin: left; transform: scaleX(0); opacity: .85; }
 .dropbar span { position: relative; display: block; text-align: center; font: 600 11px/18px ui-monospace, Menlo, monospace; color: var(--text); mix-blend-mode: difference; }
@@ -156,6 +158,23 @@ body.showkeys footer { display: flex; }
 .chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 6px; }
 .chips .lbl { min-width: 76px; }
 .chips button { padding: 3px 7px; font-size: 11px; border-radius: 12px; }
+
+/* program dropu: 4 listy w siatce 2×2, zaprogramowane pole podświetlone */
+.dropprog { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; margin-top: 6px; }
+.dropprog label { display: grid; grid-template-columns: 74px 1fr; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
+.dropprog select { width: 100%; min-width: 0; padding: 3px 4px; font-size: 11px; }
+.dropprog select.prog { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); color: var(--text); }
+
+/* licznik FPS w rogu podglądu */
+.fps {
+  position: absolute; right: 8px; top: 6px; font: 600 11px ui-monospace, Menlo, monospace;
+  padding: 1px 6px; border-radius: 4px; background: rgba(0,0,0,.55); pointer-events: none; color: #7ee787;
+}
+.fps.mid { color: #e3b341; }
+.fps.low { color: #ff7b72; }
+body.bare .fps { display: none; }
+/* podgląd zostaje na widoku, gdy lewa kolumna się przewija */
+.col-live .stage { position: sticky; top: 0; z-index: 3; }
 
 /* --- MIDI --- */
 #midiStatus { font-size: 11px; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

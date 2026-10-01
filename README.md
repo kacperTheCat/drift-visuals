@@ -56,7 +56,10 @@ Sekcja **Drop** w lewej kolumnie (klawisz `D` uzbraja / anuluje z ostatnią dłu
    Przyspieszenie (ruch coraz szybszy), Ściemnianie (obraz gaśnie), Strobo (ostatni takt:
    ósemki, ostatnie 2 beaty: szesnastki), Glitch (narasta w ostatnich 2 taktach), Rozpad
    (obraz pęka i rozpada się przez całe odliczanie, a na dropie składa się w jednej chwili).
-3. **Na dropie** (do wyboru): nowa scena (cięcie), wariacja, flash, nowe kolory, nowe tło.
+3. **Program dropu** — 4 listy: Głębia, Tło, Kolory głębi, Kolory tła. Domyślnie pokazują to,
+   co gra teraz (= bez zmian). Wybierz scenę/tło/paletę albo „losowa”, a pole się podświetli —
+   w momencie dropu wejdzie cięciem. Wybranie tego, co gra, kasuje program pola. Po dropie
+   program się czyści. Dodatkowo przełączniki „Na dropie”: Wariacja i Flash.
    Efekty narastania puszczają od razu, a drop staje się początkiem frazy dla autopilota.
 
 W trakcie odliczania autopilot nie zmienia scen. Przyciski dropu można przypisać do MIDI
@@ -137,9 +140,16 @@ czy jest przypisany; `DRIFT.midi.debug = false` wyłącza log.
 **XDJ-RX3:** jeśli RX3 wysyła komunikaty MIDI albo zegar, DRIFT je odbierze. Po podłączeniu
 sprawdź status MIDI w pasku: pokazuje liczbę urządzeń i ostatnio odebraną kontrolkę (np. `CC21`).
 
+## Licznik FPS
+
+W prawym górnym rogu podglądu: klatki na sekundę i czas klatki. Z otwartym oknem wyjścia pokazuje
+FPS projektora („WYJŚCIE …”). Zielony = płynnie, żółty < 55 fps, czerwony < 40 fps — wtedy wyłącz
+„Wysoką rozdzielczość” albo wybierz lżejszą scenę. Podgląd schowany w tle przeglądarki jest dławiony,
+więc pokazuje mniej — miarodajne jest okno, na które patrzysz.
+
 ## Jakość obrazu
 
-W sekcji Warstwy, „Jakość obrazu”:
+W kolumnie Głębia, „Jakość obrazu”:
 - **Wygładzanie krawędzi** (domyślnie włączone): filtr FXAA na warstwie głębi — usuwa schodki
   na krawędziach scen 3D, praktycznie bez kosztu wydajności.
 - **Wysoka rozdzielczość** (domyślnie wyłączona): sceny liczone w 1,5× rozdzielczości i pomniejszane.
