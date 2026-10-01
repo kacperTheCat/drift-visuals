@@ -71,14 +71,14 @@ W trakcie odliczania autopilot nie zmienia scen. Przyciski dropu można przypisa
 - **Głębia** (klawisze 1–0 i Q W E R Y U I): pierwszy plan. Łuki, Rdzeń, Pole, Pierścienie, Spirala,
   Rtęć, Gyroid, Kryształ, Organizm i Arteria to prawdziwe 3D (raymarching). Tunel, Korytarz, Kalejdoskop,
   Orbity i Puls są płaskie. Fraktale: Rdzeń (gąbka Mengera), Kryształ (KIFS),
-  Mandelbulb i Apollonius (lot przez jaskinie z kul). Fale: świecące czoła fal dźwięku na wodzie
-  (kształt widma, przenikające się źródła) — prześwituje przez nie tło. Monolity i Wodorosty są
+  Mandelbulb i Apollonius (lot przez jaskinie z kul). Fale: świecące kręgi widma — co pół taktu
+  rodzi się kontur w kształcie okrągłego wykresu częstotliwości i rozchodzi się, lekko skręcony. Monolity i Wodorosty są
   wyłączone (zakomentowane w `js/scenes.js`); żeby je przywrócić, usuń `// ` z ich linii. Klik w scenę
   płynnie do niej przechodzi, a czas przejścia ustawiasz w sekcji „Głębia”.
 - **Tło** (`G` / `Shift+G`): Mgła, Poświata, Horyzont, Moiré, Strata, Skaner, Pustka
   (prawie czarne — sama głębia na czerni), Pył, Zorza, Raster, Izolinie, Julia (płynący
-  fraktal 2D, pasma rozchodzą się w rytm beatu), Tafla (ciemna woda z falami dźwięku:
-  co beat pierścień w kształcie widma, stopa go wzmacnia, bas marszczy środek). Prześwituje
+  fraktal 2D, pasma rozchodzą się w rytm beatu), Tafla (spokojna ciemna woda: co beat
+  w losowym miejscu spada kropla, stopa = mocniejsza, bas wzmacnia falę powierzchni). Prześwituje
   tam, gdzie głębia jest pusta albo ginie we mgle.
 - **Parametry per warstwa:** głębia ma Intensywność, Reaktywność, Ruch (prędkość, 100 = normalnie)
   i Smugi. Tło ma Jasność, Reaktywność i Ruch. Smugi działają tylko na głębi, więc tło zostaje ostre.
