@@ -223,6 +223,12 @@ body.bare .top, body.bare .col > section:not(.stage), body.bare aside, body.bare
 body.bare .stage { position: fixed; inset: 0; aspect-ratio: auto; z-index: 5; }
 body.nocursor { cursor: none; }
 
+/* niskie ekrany (np. 1280×720): sceny w 4 kolumnach, żeby kolumny mieściły się bez przewijania */
+@media (max-height: 800px) and (min-width: 1101px) {
+  .col .scenes { grid-template-columns: repeat(4, 1fr); gap: 3px; }
+  .col .scene { font-size: 11px; padding: 4px 4px 4px 6px; }
+}
+
 /* węższe ekrany: podgląd + na żywo u góry, głębia i tło obok siebie niżej */
 @media (max-width: 1100px) {
   main { grid-template-columns: 1fr 1fr; overflow-y: auto; }

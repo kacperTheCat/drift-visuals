@@ -43,6 +43,8 @@ float sdBox(vec3 p,vec3 b){vec3 q=abs(p)-b;return length(max(q,0.))+min(max(q.x,
 float sdTorus(vec3 p,vec2 t){return length(vec2(length(p.xz)-t.x,p.y))-t.y;}
 float sdOct(vec3 p,float s){p=abs(p);return (p.x+p.y+p.z-s)*.57735;}
 float smin(float a,float b,float k){float h=clamp(.5+.5*(b-a)/k,0.,1.);return mix(b,a,h)-k*h*(1.-h);}
+float sdEll(vec3 p,vec3 r){float k0=length(p/r),k1=length(p/(r*r));return k0*(k0-1.)/max(k1,1e-5);}
+float sdSeg(vec3 p,vec3 a,vec3 b,float r){vec3 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h)-r;}
 `;
 
 // Wstawiane między `map` a `frag` scen 3D.
@@ -647,6 +649,215 @@ void main(){
   },
 
   // =====================================================================
+  // GŁĘBIA — organiczne 3D (druga seria)
+  // =====================================================================
+  {
+    id: 'mycel', name: 'Grzybnia', layer: 'depth', mood: 'both',
+    // Lot przez sieć splątanych włókien (przecięcia dwóch gyroidów); po nitkach biegną impulsy.
+    map: /* glsl */ `
+float gy(vec3 p){ return dot(sin(p),cos(p.zxy)); }
+float map(vec3 p){
+  float s=1.5+uVar.x*.8;
+  vec3 q=p*s;
+  float a=gy(q),b=gy(q*1.37+vec3(1.3,2.1,.7));
+  return (length(vec2(a,b))-(.1+.05*BASS))/(s*2.4);
+}`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  vec3 ro=vec3(sin(uTime*.1)*.6,cos(uTime*.08)*.6,uTime*.55);
+  vec3 rd=camera(ro,ro+vec3(sin(uTime*.07)*.5,cos(uTime*.05)*.5,2.),sin(uTime*.05)*.3)*normalize(vec3(uv,1.2));
+  float glow;float t=march(ro,rd,14.,glow);
+  float emit=0.;
+  if(t>0.){
+    vec3 p=ro+rd*t;
+    float w=fract(p.z*.35+dot(p.xy,vec2(.2,.15))-uBeats*.5);
+    emit=(1.-smoothstep(0.,.07,abs(w-.5)))*(.6+1.2*KICK);
+  }
+  fragColor=shade(ro,rd,t,14.,glow,emit);
+}`,
+  },
+  {
+    id: 'nautilus', name: 'Muszla', layer: 'depth', mood: 'calm',
+    // Spirala logarytmiczna łodzika; skala rośnie płynnie, więc kamera bez końca "wkręca się" do środka.
+    map: /* glsl */ `
+float map(vec3 p){
+  p.xz*=rot(uTime*.06);
+  float b=.17+.03*uVar.x;
+  float sc=exp(fract(uTime*.03)*b*TAU);   // samopodobieństwo: powiększenie o jeden zwój = ten sam kształt
+  p*=sc;
+  float r=length(p.xz),a=atan(p.z,p.x);
+  float k=(log(max(r,1e-4))/b-a)/TAU;
+  float d=1e3;
+  for(int i=0;i<2;i++){
+    float kk=clamp(floor(k)+float(i),-7.,1.);
+    float Rc=exp(b*(a+TAU*kk));
+    d=min(d,length(vec2(r-Rc,p.y))-Rc*(.42+.04*KICK));
+  }
+  d=max(abs(d)-.01,p.y);                 // otwarta od góry: widać komory
+  d+=.004*sin(a*26.+uTime*.5);           // żeberka
+  return d*.6/sc;
+}`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  vec3 ro=vec3(.4,2.4+uVar.y*.6,1.4);
+  vec3 rd=camera(ro,vec3(-.1,0.,-.1),0.)*normalize(vec3(uv,1.5));
+  float glow;float t=march(ro,rd,8.,glow);
+  float emit=0.;
+  if(t>0.){ vec3 p=ro+rd*t; emit=smoothstep(.9,1.,sin(length(p.xz)*14.-uBeats*PI))*(.3+.8*KICK); }
+  fragColor=shade(ro,rd,t,8.,glow,emit);
+}`,
+  },
+  {
+    id: 'flower', name: 'Kwiat', layer: 'depth', mood: 'both',
+    // Trzy okółki płatków rozwijają się przez 16 taktów i zamykają; stopa lekko szarpie płatkami.
+    map: /* glsl */ `
+float petals(vec3 p,float n,float len,float tilt,float off){
+  float a=atan(p.z,p.x)+off,sec=TAU/n;
+  a=mod(a+sec*.5,sec)-sec*.5;
+  float r=length(p.xz);
+  vec3 q=vec3(cos(a)*r,p.y,sin(a)*r);
+  q.xy*=rot(tilt);
+  q.x-=len*.5;
+  return sdEll(q,vec3(len*.5,.03,len*.22));
+}
+float map(vec3 p){
+  p.xz*=rot(uTime*.07);
+  float open=.5+.5*sin(uBeats*PI/32.);    // rozwijanie i zamykanie co 16 taktów
+  float tilt=mix(1.25,.1,open)+.08*KICK;
+  float n=floor(5.+uVar.x*4.);
+  float d=petals(p,n,1.3,-tilt,0.);
+  d=min(d,petals(p-vec3(0.,.05,0.),n,1.,-tilt*1.15-.15,PI/n));
+  d=min(d,petals(p-vec3(0.,.1,0.),n,.65,-tilt*1.3-.3,0.));
+  d=min(d,length(p-vec3(0.,.12,0.))-.16-.04*BASS);
+  return d*.8;
+}`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  float a=uTime*.08;
+  vec3 ro=vec3(sin(a)*3.,2.1+uVar.y*.6,cos(a)*3.);
+  vec3 rd=camera(ro,vec3(0.,.2,0.),0.)*normalize(vec3(uv,1.6));
+  float glow;float t=march(ro,rd,10.,glow);
+  float emit=0.;
+  if(t>0.){ vec3 p=ro+rd*t; emit=smoothstep(.7,1.3,length(p.xz))*(.25+.8*KICK); }
+  fragColor=shade(ro,rd,t,10.,glow,emit);
+}`,
+  },
+  {
+    id: 'spine', name: 'Kręgosłup', layer: 'depth', mood: 'drive',
+    // Łańcuch kręgów wije się jak wąż; skręt i światło przebiegają wzdłuż w rytm.
+    map: /* glsl */ `
+float map(vec3 p){
+  float x=p.x;
+  vec2 c=vec2(sin(x*.7+uTime*.5)*.55,cos(x*.5+uTime*.35)*.35)*(.7+.4*BASS);
+  vec3 q=vec3(x,p.y-c.x,p.z-c.y);
+  float id=floor(q.x/.42+.5);
+  q.x-=id*.42;
+  q.yz*=rot(id*.18+sin(uBeats*PI*.5-id*.4)*.4);
+  float disc=max(length(q.yz)-.15,abs(q.x)-.07)-.02;
+  float ring=length(vec2(length(q.yz-vec2(.2,0.))-.07,q.x))-.03;
+  vec3 qa=vec3(q.x,q.y,abs(q.z));
+  float wing=sdSeg(qa,vec3(0.,0.,.12),vec3(0.,.08,.42),.035);
+  float top=sdSeg(q,vec3(0.,.12,0.),vec3(-.06,.38,0.),.03);
+  return smin(smin(disc,ring,.05),min(wing,top),.04)*.8;
+}`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  vec3 ro=vec3(uTime*.45-1.3,.55,1.7);
+  vec3 rd=camera(ro,ro+vec3(1.8,-.45,-1.7),.05*sin(uTime*.1))*normalize(vec3(uv,1.5));
+  float glow;float t=march(ro,rd,10.,glow);
+  float emit=0.;
+  if(t>0.){ vec3 p=ro+rd*t; float id=floor(p.x/.42+.5); emit=smoothstep(.85,1.,fract(id*.125-uBeats*.25))*(.5+1.*KICK); }
+  fragColor=shade(ro,rd,t,10.,glow,emit);
+}`,
+  },
+  {
+    id: 'villi', name: 'Kosmki', layer: 'depth', mood: 'calm',
+    // Tunel z falujących wypustek (jak wnętrze jelita); końcówki lekko świecą.
+    map: /* glsl */ `
+float map(vec3 p){
+  float r=length(p.xy),a=atan(p.y,p.x);
+  float R=1.7;
+  float wall=R-r;
+  float n=20.,sec=TAU/n;
+  float ia=floor(a/sec+.5);
+  float zc=.32,iz=floor(p.z/zc+.5);
+  vec3 q=vec3((a-ia*sec)*r,p.z-iz*zc,R-r);
+  float h=hash(vec2(ia,iz));
+  float len=.3+.35*h;
+  q.xy+=vec2(sin(uTime*1.1+h*6.+iz*.3),cos(uTime*.8+h*4.))*.07*q.z*(1.+BASS);
+  float v=sdSeg(q,vec3(0.),vec3(0.,0.,len),.05+.02*KICK);
+  return min(wall,v)*.6;
+}`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  vec3 ro=vec3(.25*sin(uTime*.2),.25*cos(uTime*.17),uTime*.7);
+  vec3 rd=camera(ro,ro+vec3(0.,0.,2.),uTime*.04)*normalize(vec3(uv,1.15));
+  float glow;float t=march(ro,rd,16.,glow);
+  float emit=0.;
+  if(t>0.){ vec3 p=ro+rd*t; emit=smoothstep(1.,1.4,1.7-length(p.xy)+.9)*(.2+.6*KICK); }
+  fragColor=shade(ro,rd,t,16.,glow,emit);
+}`,
+  },
+  {
+    id: 'seeds', name: 'Nasiona', layer: 'depth', mood: 'both',
+    // Chmura strąków wirujących w strumieniu powietrza; stopa je rozpycha.
+    map: /* glsl */ `
+float map(vec3 p){
+  p.xy*=rot(p.z*.12+uTime*.08);
+  vec3 c=vec3(1.4);
+  vec3 id=floor(p/c+.5);
+  vec3 q=p-id*c;
+  vec3 h=vec3(hash(id.xy+id.z),hash(id.yz+3.),hash(id.zx+7.));
+  q-=(h-.5)*.5*(1.+.6*KICK);
+  q.xy*=rot(uTime*(h.x-.5)*2.+h.y*6.);
+  q.yz*=rot(uTime*(h.y-.5)*1.5+h.z*6.);
+  return sdEll(q,vec3(.11,.11,.3)*(.7+.6*h.z))*.7;
+}`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  vec3 ro=vec3(.7,.7,uTime*.5);
+  vec3 rd=camera(ro,ro+vec3(sin(uTime*.06)*.4,cos(uTime*.05)*.3,2.),0.)*normalize(vec3(uv,1.3));
+  float glow;float t=march(ro,rd,14.,glow);
+  fragColor=shade(ro,rd,t,14.,glow,t>0.?.08+.4*KICK:0.);
+}`,
+  },
+  {
+    id: 'shoal', name: 'Ławica', layer: 'depth', mood: 'drive',
+    // Ławica ryb płynie razem i wspólnie zmienia kierunek; ogony machają.
+    map: /* glsl */ `
+float map(vec3 p){
+  float clear=1.4-length(p);             // wolna przestrzeń wokół kamery
+  float hd=uTime*.12+.9*sin(uTime*.23);
+  vec3 dir=normalize(vec3(sin(hd),.15*sin(uTime*.4),cos(hd)));
+  p-=dir*uTime*.9;
+  vec3 c=vec3(1.15);
+  vec3 id=floor(p/c+.5);
+  vec3 q=p-id*c;
+  vec3 h=vec3(hash(id.xy+id.z*3.),hash(id.yz+5.),hash(id.zx+9.));
+  q-=(h-.5)*.5;
+  q.xz*=rot(hd);
+  q.x+=sin(q.z*16.+uTime*9.+h.x*6.)*.02*(1.+KICK);
+  float body=sdEll(q,vec3(.035,.06,.17));
+  float tail=sdEll(q-vec3(0.,0.,-.19),vec3(.008,.055,.04)); // płetwa ogonowa
+  return max(min(body,tail)*.7,clear);
+}`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  vec3 ro=vec3(0.,0.,0.);
+  vec3 rd=camera(ro,vec3(sin(uTime*.03),.1,cos(uTime*.03)),0.)*normalize(vec3(uv,1.3));
+  float glow;float t=march(ro,rd,12.,glow);
+  fragColor=shade(ro,rd,t,12.,glow,t>0.?.1+.3*KICK:0.);
+}`,
+  },
+
+  // =====================================================================
   // TŁO
   // =====================================================================
   {
@@ -880,52 +1091,33 @@ void main(){
   },
   {
     id: 'veins', name: 'Żyły', layer: 'back', mood: 'calm',
-    // Krążenie: krwinki płyną wzdłuż naczyń (tętnice w jedną stronę, żyły w drugą).
-    // Przepływ jest pulsacyjny — na każdy beat serce gwałtownie pcha płyn (skurcz),
-    // potem płyn zwalnia (rozkurcz). Fala ciśnienia rozszerza naczynia i biegnie wzdłuż nich.
-    // W tle nieruchoma siateczka naczyń włosowatych.
-    // uVar: x = skala, y = gęstość krwinek, z = puls co 2 beaty / co beat, w = kąt sieci.
+    // Sieć naczyń (grzbiety szumu), przez którą od "serca" płynie puls — ostre czoło, wygasający ogon.
+    // uVar: x = skala, y = ostrość naczyń, z = puls co 2 beaty / co beat, w = położenie serca (serce powoli wędruje).
     frag: /* glsl */ `
-float vesY(float x,float i){ return (i-2.)*.3+.13*sin(x*1.3+i*1.7+uTime*.04)+.06*sin(x*3.1-i*2.3); }
 void main(){
-  vec2 p=cuv()*(1.+uVar.x*.6)*rot((uVar.w-.5)*.8);
-  float b=uBeats*(uVar.z<.5?.5:1.);
-  // przesunięcie płynu: stały wolny przepływ + pchnięcie na każdy beat (szybki start, wyhamowanie)
-  float push=floor(b)+(1.-exp(-5.*fract(b)))/(1.-exp(-5.));
-  float flow=.3*b+(1.1+.6*KICK)*push;
-  float dens=10.+uVar.y*10.;
-  // siateczka naczyń włosowatych (nieruchoma, słaba)
-  float cap=pow(1.-abs(noise(p*7.)*2.-1.),8.)+.5*pow(1.-abs(noise(p*13.+3.)*2.-1.),8.);
-  vec3 col=uC2*cap*.06;
-  for(int k=0;k<10;k++){
-    float i=float(k/2);                  // 5 głównych naczyń, każde z jednym odgałęzieniem
-    bool br=mod(float(k),2.)>.5;
-    float yc=vesY(p.x,i), yn=vesY(p.x+.01,i);
-    float x0=-.6+hash(vec2(i,4.))*1.2;   // miejsce rozgałęzienia
-    float sg=hash(vec2(i,9.))>.5?1.:-1.;
-    if(br){ float t=max(p.x-x0,0.); yc+=sg*t*t*.35; yn+=sg*max(p.x+.01-x0,0.)*max(p.x+.01-x0,0.)*.35; }
-    float sl=(yn-yc)/.01;
-    float d=abs(p.y-yc)/sqrt(1.+sl*sl);
-    float dir=mod(i,2.)<.5?1.:-1.;       // tętnice / żyły: przeciwne kierunki
-    // fala ciśnienia: rozszerzenie biegnie wzdłuż naczynia szybciej niż płyn
-    float dil=exp(-5.*fract(b-(dir*p.x+1.)*.3));
-    float w=(br?.011:.02)*(1.+.35*dil)*(br?smoothstep(x0-.02,x0+.3,p.x):1.);
-    if(w<.001) continue;
-    float wall=exp(-d*d/(w*w*2.));
-    // krwinki: podłużne drobinki przesuwane przepływem
-    float s=p.x*dens-dir*flow*1.6+i*1.37+(br?.5:0.);
-    float hc=hash(vec2(floor(s),i+(br?7.:0.)));
-    float off=(hash(vec2(floor(s),i+3.))-.5)*.4;     // nieregularne odstępy
-    float sz=.1+.2*hc;                                // różne rozmiary krwinek
-    // krwinka = miękki owal: wzdłuż naczynia (fract) i w poprzek (odległość od osi)
-    float along=(fract(s)-.5-off)/(sz+.12);
-    float across=(p.y-yc)/(w*.75)*(1.+.3*sin(s*2.));
-    float cell=(1.-smoothstep(.55,1.,length(vec2(along,across))))*step(.22,hc);
-    cell*=.55+.45*hc;
-    col+=uC2*wall*.3;
-    col+=mix(uC2,uC1,.8)*cell*(.55+.45*dil);
+  vec2 p=cuv()*(1.5+uVar.x);
+  vec2 q=p+.3*vec2(fbm(p+uTime*.05),fbm(p-uTime*.04));
+  float v=0.,a=.5;vec2 pp=q*2.;
+  for(int i=0;i<4;i++){
+    v+=a*pow(1.-abs(noise(pp)*2.-1.),3.+uVar.y*6.); // "grzbiety" szumu = sieć naczyń
+    pp=rot(.6)*pp*2.1+3.1;a*=.5;
   }
-  col*=.6+.5*uInt;
+  // Puls płynie naczyniami: "czas dotarcia" = odległość od serca, zakrzywiona tak jak naczynia.
+  // serce powoli wędruje po ekranie
+  vec2 heart=(uVar.w-.5)*vec2(.8,.4)+vec2(sin(uTime*.031)*.55,sin(uTime*.023+1.3)*.32);
+  float T=length(q-heart)*1.6+.3*fbm(q*3.);
+  float rate=uVar.z<.5?.5:1.;            // puls co 2 beaty albo co beat
+  float pulse=0.;
+  for(int k=0;k<3;k++){
+    float age=fract(uBeats*rate)+float(k); // ile pulsów temu wyszedł z serca
+    float d=T-age*1.3/rate*.5;              // >0: przed czołem fali, <0: za nim
+    float wave=d>0.?exp(-d*d*180.):exp(d*4.); // ostre czoło, wygasający ogon
+    pulse+=wave*exp(-age*.8)*(k==0?1.+1.2*KICK:1.);
+  }
+  vec3 col=uC2*v*.3;                                   // spokojne, stałe naczynia
+  col+=mix(uC2,uC1,.75)*v*pulse*1.6;                   // fala w naczyniach
+  col+=uC1*pow(v,3.)*pulse*1.4;                        // jasny rdzeń grubszych naczyń
+  col*=.55+.5*uInt;
   fragColor=vec4(col,1.);
 }`,
   },
@@ -964,6 +1156,209 @@ void main(){
   vec3 col=mix(uBg,mix(uC2,uC1,.3)*.75,sky*sky)+uC1*spec*(.6+.5*uInt);
   col*=1.-.5*smoothstep(.35,1.15,length(p));
   fragColor=vec4(col,1.);
+}`,
+  },
+  // ---- tła organiczne (druga seria) ----
+  {
+    id: 'plankton', name: 'Bioluminescencja', layer: 'back', mood: 'calm',
+    // Drobny plankton dryfuje w ciemnej wodzie; fala rozbłysku przechodzi od środka co 2 beaty.
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv();
+  vec3 col=uBg;
+  float ph=fract(uBeats*.5);
+  float R=ph*1.7;
+  for(int i=0;i<3;i++){
+    float fi=float(i);
+    float sc=9.+fi*7.;
+    vec2 drift=vec2(uTime*.04*(fi+1.),sin(uTime*.1+fi)*.4);
+    vec2 q=p*sc+drift+fi*17.;
+    vec2 id=floor(q),f=fract(q)-.5;
+    float h=hash(id+fi*3.);
+    vec2 o=vec2(hash(id+11.),hash(id+23.))-.5;
+    vec2 cp=(id+.5+o*.6-drift-fi*17.)/sc;        // położenie drobinki na ekranie
+    float wave=exp(-pow(length(cp)-R,2.)*50.)*(1.-ph);
+    float dd=length(f-o*.6);
+    float on=step(.55,h);
+    float b=.12+.1*sin(uTime*(.6+h)+h*30.)+wave*(1.2+KICK);
+    col+=mix(uC2,uC1,clamp(b,0.,1.))*on*((1.-smoothstep(0.,.06+.05*wave,dd))*b+(1.-smoothstep(0.,.4,dd))*b*.12);
+  }
+  fragColor=vec4(col*(.6+.5*uInt),1.);
+}`,
+  },
+  {
+    id: 'ink', name: 'Atrament', layer: 'back', mood: 'calm',
+    // Tusz rozlewa się w wodzie miękkimi, wijącymi się smugami; brzegi smug lekko świecą.
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv()*(1.+uVar.x);
+  float t=uTime*.05;
+  vec2 q=p+vec2(fbm(p*1.5+t),fbm(p*1.5-t+4.));
+  vec2 r=p+1.2*vec2(fbm(q*2.+vec2(1.7,9.2)+t*1.5),fbm(q*2.+vec2(8.3,2.8)-t));
+  float f=fbm(r*1.8);
+  float ink=smoothstep(.45,.62,f);
+  float edge=ink*(1.-smoothstep(.62,.82,f));
+  vec3 col=mix(uBg,uC2*.55,ink)+uC1*edge*(.22+.45*BASS);
+  fragColor=vec4(col*(.6+.5*uInt),1.);
+}`,
+  },
+  {
+    id: 'incense', name: 'Dym kadzidła', layer: 'back', mood: 'calm',
+    // Cienkie smugi dymu unoszą się od dołu, wiją i rozwiewają.
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv();
+  vec3 col=vec3(0.);
+  for(int i=0;i<4;i++){
+    float fi=float(i);
+    float x0=(fi-1.5)*.38+(uVar.x-.5)*.3;
+    float y=p.y+.55;                                  // 0 przy dole ekranu
+    float wob=fbm(vec2(y*1.4-uTime*.22,fi*3.1))-.5;
+    float x=x0+wob*(.12+.7*y)+sin(y*3.-uTime*.5+fi)*.05*y;
+    float w=.004+.05*y*y;
+    float sm=exp(-abs(p.x-x)/w)*smoothstep(-.05,.15,y)*(1.-smoothstep(.85,1.4,y));
+    sm*=.45+.55*fbm(vec2(p.x*6.,y*4.-uTime*.35)+fi);
+    col+=mix(uC1,uC2,clamp(y*.8,0.,1.))*sm*(.3+.25*BASS);
+  }
+  fragColor=vec4(col*(.6+.5*uInt),1.);
+}`,
+  },
+  {
+    id: 'dunes', name: 'Wydmy', layer: 'back', mood: 'calm',
+    // Zmarszczki piasku na wydmach, oświetlone nisko z boku; wiatr powoli je przesuwa.
+    frag: /* glsl */ `
+float dune(vec2 p){
+  return fbm(p*vec2(.7,1.4)+vec2(uTime*.015,0.))*1.1
+        +.05*sin((p.y*1.1+fbm(p*2.)*.7)*(26.+uVar.x*14.)+p.x*2.5+uTime*.2);
+}
+void main(){
+  vec2 p=cuv()*1.4;
+  const float e=.004;
+  float h=dune(p),hx=dune(p+vec2(e,0.)),hy=dune(p+vec2(0.,e));
+  vec3 n=normalize(vec3((h-hx)/e*.12,(h-hy)/e*.12,1.));
+  vec3 l=normalize(vec3(-.85,.35,.4));
+  float dif=max(dot(n,l),0.);
+  vec3 col=mix(uBg,mix(uC2,uC1,.2)*.7,smoothstep(.1,1.2,h))+uC1*pow(dif,2.)*.55*(.7+.4*BASS);
+  col*=1.-.4*smoothstep(.5,1.4,length(p));
+  fragColor=vec4(col*(.6+.5*uInt),1.);
+}`,
+  },
+  {
+    id: 'woodgrain', name: 'Słoje', layer: 'back', mood: 'calm',
+    // Słoje drewna — falujące linie powoli płyną.
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv();
+  vec2 q=p*vec2(1.,.22)+.22*vec2(fbm(p*1.4+uTime*.03),fbm(p*1.4-uTime*.02));
+  float r=length(q-vec2(.25+uVar.x*.3,0.));
+  float g=sin(r*(38.+uVar.y*20.)+fbm(p*6.)*3.-uTime*.35);
+  float line=smoothstep(.7,1.,g);
+  vec3 col=mix(uBg,uC2*.45,.5+.5*g)+uC1*line*.22*(.6+.6*BASS);
+  fragColor=vec4(col*(.6+.5*uInt),1.);
+}`,
+  },
+  {
+    id: 'leaf', name: 'Liść', layer: 'back', mood: 'both',
+    // Liść z żyłkami (główna, boczne, siateczka); od ogonka do czubka przepływa puls.
+    frag: /* glsl */ `
+float vor(vec2 p){
+  vec2 i=floor(p),f=fract(p);float d1=8.,d2=8.;
+  for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){
+    vec2 g=vec2(x,y),o=vec2(hash(i+g),hash(i+g+5.3));
+    float d=length(g+o-f);
+    if(d<d1){d2=d1;d1=d;} else if(d<d2) d2=d;
+  }
+  return d2-d1;
+}
+void main(){
+  vec2 p=cuv()*1.25*rot(-.35+sin(uTime*.05)*.1);
+  float inside=(p.x+1.)*(1.-p.x)*.42-abs(p.y);              // kształt liścia (>0 wewnątrz)
+  float mid=1.-smoothstep(0.,.008*(1.1-p.x),abs(p.y));
+  float sx=p.x-abs(p.y)*1.3,id=floor(sx/.17+.5);
+  float side=1.-smoothstep(0.,.005*(1.-abs(p.y)*2.),abs(sx-id*.17));
+  float net=1.-smoothstep(0.,.03,vor(p*14.));
+  float veins=max(mid,side)+net*.35;
+  float T=(p.x+1.)*.55+abs(p.y)*.9;                        // czas dotarcia pulsu od ogonka
+  float ph=fract(uBeats*.25);
+  float pulse=exp(-pow(T-ph*1.4,2.)*70.)*(1.+KICK);
+  float m=smoothstep(0.,.02,inside);
+  vec3 col=uBg+m*(uC2*.14+veins*(uC2*.35+uC1*pulse));
+  col+=uC1*(1.-smoothstep(0.,.01,abs(inside)))*.25;        // obrys
+  fragColor=vec4(col*(.6+.5*uInt),1.);
+}`,
+  },
+  {
+    id: 'scales', name: 'Łuska', layer: 'back', mood: 'drive',
+    // Łuski węża / ryby; połysk przesuwa się po nich w rytm.
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv()*(5.+uVar.x*4.);
+  p.y+=uTime*.12;
+  vec2 id=floor(p);
+  if(mod(id.y,2.)>.5) p.x+=.5;
+  id=floor(p);
+  vec2 f=fract(p);
+  // łuski zachodzą na siebie jak dachówki: łuski z rzędu wyżej przykrywają bieżącą
+  float du=min(length(f-vec2(0.,1.)),length(f-vec2(1.,1.)));
+  float d=du<.72?du:length(f-vec2(.5,0.));
+  d/=.72;
+  float body=1.-smoothstep(.97,1.,d);
+  float rim=(1.-smoothstep(.0,.06,abs(d-.95)));
+  float sheen=pow(.5+.5*sin(p.x*.6+p.y*.4-uBeats*PI*.5),6.);
+  vec3 col=uC2*(.12+.35*(1.-d))*body+uC1*rim*.3+uC1*sheen*(1.-d)*body*(.35+.5*KICK);
+  fragColor=vec4(col*(.6+.5*uInt),1.);
+}`,
+  },
+  {
+    id: 'mitosis', name: 'Mitoza', layer: 'back', mood: 'calm',
+    // Komórki pod mikroskopem powoli się dzielą (rozciągają i rozpadają na dwie).
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv()*(2.6+uVar.x*1.5)+vec2(uTime*.03,0.);
+  vec2 i=floor(p);
+  float field=9.,nuc=0.;
+  for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){
+    vec2 g=i+vec2(x,y);
+    float h=hash(g);
+    vec2 c=g+.5+(vec2(hash(g+3.1),hash(g+7.3))-.5)*.4;
+    float ph=fract(uTime*.04+h);                 // faza podziału
+    float sep=smoothstep(.45,1.,ph)*.28;
+    vec2 ax=vec2(cos(h*6.28),sin(h*6.28));
+    float r=.3-.06*smoothstep(.45,1.,ph);
+    float d=smin(length(p-c-ax*sep)-r,length(p-c+ax*sep)-r,.15);
+    field=min(field,d);
+    nuc+=1.-smoothstep(0.,.09,min(length(p-c-ax*sep*1.3),length(p-c+ax*sep*1.3)));
+  }
+  float mem=1.-smoothstep(0.,.025,abs(field));
+  float cell=1.-smoothstep(-.02,0.,field);
+  vec3 col=uBg+uC2*cell*.18+uC1*mem*(.35+.3*BASS)+uC2*nuc*.45;
+  fragColor=vec4(col*(.6+.5*uInt),1.);
+}`,
+  },
+  {
+    id: 'roots', name: 'Korzenie', layer: 'back', mood: 'both',
+    // Kłącza rozrastają się od dołu ekranu przez frazę (16 taktów), potem zaczynają od nowa.
+    frag: /* glsl */ `
+void main(){
+  vec2 p=cuv();
+  float grow=smoothstep(0.,.9,fract(uBeats/64.))*1.3;   // jak wysoko sięgają korzenie
+  vec3 col=vec3(0.);
+  for(int i=0;i<7;i++){
+    float fi=float(i);
+    float y=p.y+.55;                            // 0 przy dole
+    float x0=(fi-3.)*.27+(hash(vec2(fi,1.))-.5)*.15;
+    float x=x0+(fbm(vec2(y*1.8,fi*2.3))-.5)*.5*y;
+    float w=.012*(1.-y/1.4);
+    float d=abs(p.x-x);
+    float on=step(y,grow*(.7+.3*hash(vec2(fi,4.))));
+    float root=(1.-smoothstep(w*.5,w+.003,d))*on*step(0.,y);
+    // odgałęzienie
+    float bx=x+(y-.3-fi*.03)*.6*(hash(vec2(fi,8.))-.5)*2.;
+    float br=(1.-smoothstep(.002,.008,abs(p.x-bx)))*step(.3+fi*.03,y)*on*.7;
+    float tip=exp(-pow(y-grow*(.7+.3*hash(vec2(fi,4.))),2.)*400.)*exp(-d*d*2000.);
+    col+=uC2*(root+br)*.6+uC1*tip*(.8+KICK);
+  }
+  fragColor=vec4(col*(.6+.5*uInt),1.);
 }`,
   },
 ];
