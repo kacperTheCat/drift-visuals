@@ -233,7 +233,7 @@ function runControl() {
     sceneBtns[sc.id] = b;
   };
   DEPTH.forEach((sc, i) => addSceneBtn(sc, i, 'scenes', (e) => d.setScene(sc.id, e.shiftKey ? 'cut' : null)));
-  BACK.forEach((sc) => addSceneBtn(sc, null, 'backs', (e) => d.setBack(sc.id, e.shiftKey ? 0 : 8)));
+  BACK.forEach((sc) => addSceneBtn(sc, null, 'backs', (e) => d.setBack(sc.id, e.shiftKey ? 0 : undefined)));
   $('aDepth').addEventListener('click', () => d.toggleDepth());
   $('autoBack').addEventListener('change', (e) => d.set('autoBack', e.target.checked));
 
@@ -266,6 +266,7 @@ function runControl() {
   const segs = [
     ['phrase', (v) => +v],
     ['trans', (v) => v, 'transition'],
+    ['transBack', (v) => v, 'backTransition'],
     ['blend', (v) => v, 'blend'],
   ];
   for (const [id, conv, key = id] of segs) {
@@ -362,7 +363,7 @@ function runControl() {
   for (const [id, b] of Object.entries(sceneBtns)) tag(b, `scene:${id}`);
   palBtns.forEach((b, i) => tag(b, `pal:depth:${i}`));
   palBackBtns.forEach((b, i) => tag(b, `pal:back:${i}`));
-  for (const seg of ['blend', 'phrase', 'trans', 'dropIn', 'dropBuild', 'dropHit'])
+  for (const seg of ['blend', 'phrase', 'trans', 'transBack', 'dropIn', 'dropBuild', 'dropHit'])
     for (const b of $(seg).querySelectorAll('button')) tag(b, `${seg}:${b.dataset.v}`);
   for (const id of ['tap', 'sync', 'bpmAuto', 'auto', 'aVary', 'aVaryBack', 'aFlash', 'aStrobe', 'aGlitch', 'aShatter', 'aBlack', 'aDepth',
     'autoPal', 'autoBlend', 'autoBack', 'linkPal', 'mPrevScene', 'mNextScene', 'mPrevBack', 'mNextBack',
@@ -580,7 +581,7 @@ function runControl() {
     $('phraseProg').style.transform = `scaleX(${(((f.beats / 4) % ph) / ph).toFixed(3)})`;
     $('auto').classList.toggle('on', d.s.autopilot);
     $('autoPal').checked = d.s.autoPalette;
-    for (const [id, key] of [['phrase', 'phrase'], ['trans', 'transition'], ['blend', 'blend']])
+    for (const [id, key] of [['phrase', 'phrase'], ['trans', 'transition'], ['transBack', 'backTransition'], ['blend', 'blend']])
       for (const b of $(id).children) b.classList.toggle('on', b.dataset.v === String(d.s[key]));
     for (const k of sliders) if (document.activeElement !== $(k)) $(k).value = Math.round(d.s[k] * 100);
     $('aBlack').classList.toggle('on', d.black);

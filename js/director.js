@@ -4,7 +4,7 @@ import { SCENES, DEPTH, BACK } from './scenes.js';
 import { PALETTES } from './palettes.js';
 
 export const RANDOM = '__random'; // wartość "losowa" w programie dropu
-export const TRANSITIONS = { cut: 0, beat: 1, bar: 4, phrase: 16 }; // w beatach
+export const TRANSITIONS = { cut: 0, beat: 1, bar: 4, bar2: 8, phrase: 16 }; // w beatach
 // Tryby nakładania głębi na tło (kolejność = numer trybu w shaderze kompozycji).
 export const BLENDS = [
   ['normal', 'Normalny'],
@@ -64,7 +64,8 @@ export class Director {
         dropBars: 4,
         dropBuild: { blur: true, accel: true, dark: false, strobe: true, glitch: false, shatter: false },
         dropHit: { vary: true, flash: true },
-        transition: 'bar',
+        transition: 'bar', // przejście scen głębi
+        backTransition: 'bar2', // przejście teł
         phrase: 16,
         autopilot: true,
         autoPalette: true,
@@ -218,7 +219,7 @@ export class Director {
   }
 
   // ---------- tło ----------
-  setBack(id, beats = 8) {
+  setBack(id, beats = TRANSITIONS[this.s.backTransition] ?? 8) {
     if (!id || id === this.bk.cur.id) return;
     Director.fadeLayer(this.bk, this.slot(id), beats);
   }

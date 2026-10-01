@@ -74,7 +74,8 @@ W trakcie odliczania autopilot nie zmienia scen. Przyciski dropu można przypisa
   Mandelbulb i Apollonius (lot przez jaskinie z kul). Fale: świecące kręgi widma — co pół taktu
   rodzi się kontur w kształcie okrągłego wykresu częstotliwości i rozchodzi się, lekko skręcony. Monolity i Wodorosty są
   wyłączone (zakomentowane w `js/scenes.js`); żeby je przywrócić, usuń `// ` z ich linii. Klik w scenę
-  płynnie do niej przechodzi, a czas przejścia ustawiasz w sekcji „Głębia”.
+  płynnie do niej przechodzi; czas przejścia (cięcie / 1 beat / 1 takt / 4 takty) ustawiasz pod scenami
+  głębi. Tło ma osobny przełącznik (cięcie / 1 / 2 / 4 takty) pod listą teł.
 - **Organiczne (druga seria):** Grzybnia (lot przez sieć włókien z impulsami), Muszla (spirala łodzika,
   kamera bez końca wkręca się do środka), Kręgosłup (wijący się łańcuch kręgów), Kosmki (tunel
   z falujących wypustek), Nasiona (wirujące strąki). Sceny bez klawisza (powyżej 21.) wybierasz kliknięciem.

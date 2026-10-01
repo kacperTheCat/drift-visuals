@@ -118,8 +118,8 @@
         <section>
           <h2>Głębia <small class="muted">● = w puli autopilota</small></h2>
           <div class="scenes" id="scenes"></div>
-          <div class="seg wide" id="trans" title="Przejście po kliknięciu sceny">
-            <button data-v="cut">cięcie</button><button data-v="beat">1 beat</button><button data-v="bar">1 takt</button><button data-v="phrase">4 takty</button>
+          <div class="seg wide" id="trans" title="Jak długo stara scena głębi przenika się z nową (dotyczy kliknięć, klawiszy, MIDI i autopilota; Shift + klawisz = zawsze cięcie)">
+            <button data-v="cut" title="Cięcie — nowa scena głębi od razu, bez przenikania">cięcie</button><button data-v="beat" title="Przenikanie przez 1 beat (ok. 0,5 s przy 128 BPM)">1 beat</button><button data-v="bar" title="Przenikanie przez 1 takt = 4 beaty (ok. 1,9 s przy 128 BPM)">1 takt</button><button data-v="phrase" title="Powolne przenikanie przez 4 takty = 16 beatów (ok. 7,5 s przy 128 BPM)">4 takty</button>
           </div>
         </section>
         <section>
@@ -155,6 +155,9 @@
         <section>
           <h2>Tło <small class="muted">G = następne</small></h2>
           <div class="scenes" id="backs"></div>
+          <div class="seg wide" id="transBack" title="Jak długo stare tło przenika się z nowym (kliknięcie, klawisz G, MIDI; Shift + klik = cięcie)">
+            <button data-v="cut" title="Cięcie — nowe tło od razu">cięcie</button><button data-v="bar" title="Przenikanie przez 1 takt = 4 beaty (ok. 1,9 s przy 128 BPM)">1 takt</button><button data-v="bar2" title="Przenikanie przez 2 takty = 8 beatów (ok. 3,8 s przy 128 BPM)">2 takty</button><button data-v="phrase" title="Powolne przenikanie przez 4 takty = 16 beatów (ok. 7,5 s przy 128 BPM)">4 takty</button>
+          </div>
         </section>
         <section>
           <label class="slider">Jasność <input type="range" id="backLevel" min="0" max="100"></label>
