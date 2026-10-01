@@ -880,32 +880,52 @@ void main(){
   },
   {
     id: 'veins', name: 'Żyły', layer: 'back', mood: 'calm',
-    // Sieć naczyń (grzbiety szumu), przez którą od "serca" płynie puls — ostre czoło, wygasający ogon.
-    // uVar: x = skala, y = ostrość naczyń, z = puls co 2 beaty / co beat, w = położenie serca.
+    // Krążenie: krwinki płyną wzdłuż naczyń (tętnice w jedną stronę, żyły w drugą).
+    // Przepływ jest pulsacyjny — na każdy beat serce gwałtownie pcha płyn (skurcz),
+    // potem płyn zwalnia (rozkurcz). Fala ciśnienia rozszerza naczynia i biegnie wzdłuż nich.
+    // W tle nieruchoma siateczka naczyń włosowatych.
+    // uVar: x = skala, y = gęstość krwinek, z = puls co 2 beaty / co beat, w = kąt sieci.
     frag: /* glsl */ `
+float vesY(float x,float i){ return (i-2.)*.3+.13*sin(x*1.3+i*1.7+uTime*.04)+.06*sin(x*3.1-i*2.3); }
 void main(){
-  vec2 p=cuv()*(1.5+uVar.x);
-  vec2 q=p+.3*vec2(fbm(p+uTime*.05),fbm(p-uTime*.04));
-  float v=0.,a=.5;vec2 pp=q*2.;
-  for(int i=0;i<4;i++){
-    v+=a*pow(1.-abs(noise(pp)*2.-1.),3.+uVar.y*6.); // "grzbiety" szumu = sieć naczyń
-    pp=rot(.6)*pp*2.1+3.1;a*=.5;
+  vec2 p=cuv()*(1.+uVar.x*.6)*rot((uVar.w-.5)*.8);
+  float b=uBeats*(uVar.z<.5?.5:1.);
+  // przesunięcie płynu: stały wolny przepływ + pchnięcie na każdy beat (szybki start, wyhamowanie)
+  float push=floor(b)+(1.-exp(-5.*fract(b)))/(1.-exp(-5.));
+  float flow=.3*b+(1.1+.6*KICK)*push;
+  float dens=10.+uVar.y*10.;
+  // siateczka naczyń włosowatych (nieruchoma, słaba)
+  float cap=pow(1.-abs(noise(p*7.)*2.-1.),8.)+.5*pow(1.-abs(noise(p*13.+3.)*2.-1.),8.);
+  vec3 col=uC2*cap*.06;
+  for(int k=0;k<10;k++){
+    float i=float(k/2);                  // 5 głównych naczyń, każde z jednym odgałęzieniem
+    bool br=mod(float(k),2.)>.5;
+    float yc=vesY(p.x,i), yn=vesY(p.x+.01,i);
+    float x0=-.6+hash(vec2(i,4.))*1.2;   // miejsce rozgałęzienia
+    float sg=hash(vec2(i,9.))>.5?1.:-1.;
+    if(br){ float t=max(p.x-x0,0.); yc+=sg*t*t*.35; yn+=sg*max(p.x+.01-x0,0.)*max(p.x+.01-x0,0.)*.35; }
+    float sl=(yn-yc)/.01;
+    float d=abs(p.y-yc)/sqrt(1.+sl*sl);
+    float dir=mod(i,2.)<.5?1.:-1.;       // tętnice / żyły: przeciwne kierunki
+    // fala ciśnienia: rozszerzenie biegnie wzdłuż naczynia szybciej niż płyn
+    float dil=exp(-5.*fract(b-(dir*p.x+1.)*.3));
+    float w=(br?.011:.02)*(1.+.35*dil)*(br?smoothstep(x0-.02,x0+.3,p.x):1.);
+    if(w<.001) continue;
+    float wall=exp(-d*d/(w*w*2.));
+    // krwinki: podłużne drobinki przesuwane przepływem
+    float s=p.x*dens-dir*flow*1.6+i*1.37+(br?.5:0.);
+    float hc=hash(vec2(floor(s),i+(br?7.:0.)));
+    float off=(hash(vec2(floor(s),i+3.))-.5)*.4;     // nieregularne odstępy
+    float sz=.1+.2*hc;                                // różne rozmiary krwinek
+    // krwinka = miękki owal: wzdłuż naczynia (fract) i w poprzek (odległość od osi)
+    float along=(fract(s)-.5-off)/(sz+.12);
+    float across=(p.y-yc)/(w*.75)*(1.+.3*sin(s*2.));
+    float cell=(1.-smoothstep(.55,1.,length(vec2(along,across))))*step(.22,hc);
+    cell*=.55+.45*hc;
+    col+=uC2*wall*.3;
+    col+=mix(uC2,uC1,.8)*cell*(.55+.45*dil);
   }
-  // Puls płynie naczyniami: "czas dotarcia" = odległość od serca, zakrzywiona tak jak naczynia.
-  vec2 heart=(uVar.w-.5)*vec2(.8,.4);
-  float T=length(q-heart)*1.6+.3*fbm(q*3.);
-  float rate=uVar.z<.5?.5:1.;            // puls co 2 beaty albo co beat
-  float pulse=0.;
-  for(int k=0;k<3;k++){
-    float age=fract(uBeats*rate)+float(k); // ile pulsów temu wyszedł z serca
-    float d=T-age*1.3/rate*.5;              // >0: przed czołem fali, <0: za nim
-    float wave=d>0.?exp(-d*d*180.):exp(d*4.); // ostre czoło, wygasający ogon
-    pulse+=wave*exp(-age*.8)*(k==0?1.+1.2*KICK:1.);
-  }
-  vec3 col=uC2*v*.3;                                   // spokojne, stałe naczynia
-  col+=mix(uC2,uC1,.75)*v*pulse*1.6;                   // fala w naczyniach
-  col+=uC1*pow(v,3.)*pulse*1.4;                        // jasny rdzeń grubszych naczyń
-  col*=.55+.5*uInt;
+  col*=.6+.5*uInt;
   fragColor=vec4(col,1.);
 }`,
   },
