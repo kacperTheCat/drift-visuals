@@ -57,25 +57,31 @@ void shState(vec2 c, out float lp, out vec2 off, out float ang){
   off=vec2((r.y-.5)*.8*lp, -2.6*lp*lp); // lekko w bok i coraz szybciej w dół
   ang=(r.x-.5)*1.6*lp;
 }
-// Otchłań pod odłamkami: drobinki lecące z głębi (3 warstwy z paralaksą), wciągające się
-// pierścienie tunelu i poświata w środku — wszystko w kolorze akcentu, delikatnie.
+// Tło pod odłamkami: ciemna, wolno płynąca mgła i unoszący się pył — subtelnie, w kolorze akcentu.
+float n2(vec2 p){
+  vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
+  float a=h1(i.x+i.y*57.), b=h1(i.x+1.+i.y*57.), c=h1(i.x+(i.y+1.)*57.), d=h1(i.x+1.+(i.y+1.)*57.);
+  return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);
+}
+float fbm3(vec2 p){ float v=0., a=.5; for(int i=0;i<3;i++){ v+=a*n2(p); p=p*2.03+7.1; a*=.5; } return v; }
 vec3 abyss(vec2 uv){
   vec2 p=(uv-.5)*vec2(uAspect,1.);
-  float r=length(p);
-  vec3 col=uFlashCol*(.1*exp(-r*2.)+.025); // poświata w głębi + lekka mgła
-  for(int i=0;i<4;i++){
+  float t=uTime;
+  // mgła: dwa przebiegi szumu, przesuwane bardzo wolno
+  float fog=fbm3(p*1.4+vec2(t*.025,-t*.015));
+  fog=fbm3(p*2.+fog*1.4+vec2(-t*.018,t*.012));
+  vec3 col=uFlashCol*(.012+.05*smoothstep(.4,.85,fog));
+  // pył / dym: drobne miękkie cząsteczki unoszące się powoli w górę, z lekkim falowaniem
+  for(int i=0;i<2;i++){
     float fi=float(i);
-    float z=fract(uTime*.05+fi/4.);           // warstwa przybliża się i zaczyna od nowa
-    vec2 q=p*mix(9.,1.2,z)+fi*7.3;
+    vec2 q=p*(16.+fi*10.)+vec2(sin(t*.06+fi*2.)*1.2,-t*(.22+.12*fi))+fi*11.;
     vec2 id=floor(q), f=fract(q)-.5;
-    float h=h1(id.x*13.1+id.y*7.7+fi);
-    vec2 o=vec2(h1(id.x+id.y*3.1+fi*5.),h1(id.y-id.x*1.7+fi*9.))-.5;
-    float star=(1.-smoothstep(0.,.04+.05*z,length(f-o*.7)))*step(.5,h);
-    float fade=smoothstep(0.,.35,z)*(1.-smoothstep(.75,1.,z));
-    col+=uFlashCol*star*fade*(.35+.5*h);
+    float h=h1(id.x*17.3+id.y*5.1+fi*3.);
+    vec2 o=vec2(h1(id.x*3.1+id.y+fi),h1(id.y*1.7-id.x+fi*2.))-.5;
+    float mote=(1.-smoothstep(0.,.09,length(f-o*.6)))*step(.84,h);
+    float tw=.55+.45*sin(t*(.8+h*1.5)+h*20.); // delikatne migotanie
+    col+=uFlashCol*mote*tw*(.09+.06*fi)*(.6+.8*fog);
   }
-  float rings=pow(abs(sin(log(r+.02)*7.-uTime*.35)),30.)*smoothstep(.05,.5,r);
-  col+=uFlashCol*rings*.14;
   return col*smoothstep(.04,.3,uShatter);
 }
 
@@ -171,7 +177,7 @@ void main(){
     // świecące rysy na początku pękania; potem krawędzie odłamków lekko świecą,
     // a odłamki gasną w otchłań
     float glowCrack=shCrack*smoothstep(0.,.06,uShatter)*(1.-smoothstep(.25,.6,uShatter));
-    float rim=shCrack*smoothstep(.2,.5,uShatter)*.55*shFade;
+    float rim=shCrack*smoothstep(.2,.5,uShatter)*.25*shFade;
     if(uShatter>.001) c=mix(abyss(vUv),c,shFade);
     c+=uFlashCol*(glowCrack*.9+rim);
   }
