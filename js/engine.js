@@ -57,32 +57,14 @@ void shState(vec2 c, out float lp, out vec2 off, out float ang){
   off=vec2((r.y-.5)*.8*lp, -2.6*lp*lp); // lekko w bok i coraz szybciej w dół
   ang=(r.x-.5)*1.6*lp;
 }
-// Tło pod odłamkami: ciemna, wolno płynąca mgła i unoszący się pył — subtelnie, w kolorze akcentu.
-float n2(vec2 p){
-  vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
-  float a=h1(i.x+i.y*57.), b=h1(i.x+1.+i.y*57.), c=h1(i.x+(i.y+1.)*57.), d=h1(i.x+1.+(i.y+1.)*57.);
-  return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);
-}
-float fbm3(vec2 p){ float v=0., a=.5; for(int i=0;i<3;i++){ v+=a*n2(p); p=p*2.03+7.1; a*=.5; } return v; }
+// Tło pod odłamkami: delikatny szum (ziarno jak w starym telewizorze), zmieniany 24 razy
+// na sekundę, z wolnymi pasmami jasności, w stonowanym kolorze akcentu.
 vec3 abyss(vec2 uv){
-  vec2 p=(uv-.5)*vec2(uAspect,1.);
-  float t=uTime;
-  // mgła: dwa przebiegi szumu, przesuwane bardzo wolno
-  float fog=fbm3(p*1.4+vec2(t*.025,-t*.015));
-  fog=fbm3(p*2.+fog*1.4+vec2(-t*.018,t*.012));
-  vec3 col=uFlashCol*(.012+.05*smoothstep(.4,.85,fog));
-  // pył / dym: drobne miękkie cząsteczki unoszące się powoli w górę, z lekkim falowaniem
-  for(int i=0;i<2;i++){
-    float fi=float(i);
-    vec2 q=p*(16.+fi*10.)+vec2(sin(t*.06+fi*2.)*1.2,-t*(.22+.12*fi))+fi*11.;
-    vec2 id=floor(q), f=fract(q)-.5;
-    float h=h1(id.x*17.3+id.y*5.1+fi*3.);
-    vec2 o=vec2(h1(id.x*3.1+id.y+fi),h1(id.y*1.7-id.x+fi*2.))-.5;
-    float mote=(1.-smoothstep(0.,.09,length(f-o*.6)))*step(.84,h);
-    float tw=.55+.45*sin(t*(.8+h*1.5)+h*20.); // delikatne migotanie
-    col+=uFlashCol*mote*tw*(.09+.06*fi)*(.6+.8*fog);
-  }
-  return col*smoothstep(.04,.3,uShatter);
+  vec2 cell=floor(gl_FragCoord.xy/1.5)+fract(floor(uTime*24.)*.1234)*137.;
+  float st=fract(sin(dot(cell,vec2(12.9898,78.233)))*43758.5453);
+  float band=.55+.45*sin(uv.y*4.-uTime*.9);
+  vec3 tint=mix(vec3(lum(uFlashCol)),uFlashCol,.35);
+  return tint*st*.11*band*smoothstep(.04,.3,uShatter);
 }
 
 // Zwraca współrzędne źródłowe (xy) i jasność odłamka (z); z<0 = szczelina / pusto. w = bliskość rysy.

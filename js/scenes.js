@@ -85,6 +85,52 @@ vec4 shade(vec3 ro,vec3 rd,float t,float maxd,float glow,float emit){
 }
 `;
 
+// Fale dźwięku na wodzie — wspólne dla sceny głębi "Fale" i tła "Tafla".
+// Co beat ze środka (albo z dwóch źródeł) wychodzi pierścień fali. Obrys pierścienia falują
+// średnie i wysokie częstotliwości (jak okrągłe widmo), stopa wzmacnia najnowszą falę,
+// bas dodaje drobne zmarszczki. Zwraca (odbłysk, cieniowanie, wysokość).
+// uVar: x = liczba płatów kształtu, y = odstęp fal, z = jedno/dwa źródła, w = kierunek światła.
+const WATER = /* glsl */ `
+// wysokość powierzchni; line = cienka linia na czole fal (czytelny kształt widma)
+float waveH(vec2 p,out float line){
+  float r=length(p),a=atan(p.y,p.x);
+  float lobes=floor(3.+uVar.x*6.);
+  float h=0.,fb=fract(uBeats);
+  line=0.;
+  for(int i=0;i<5;i++){
+    float age=fb+float(i);
+    float R=age*(.2+.16*uVar.y)
+      +.045*sin(a*lobes+uTime*.6)*(.3+uMid*uReact)
+      +.02*sin(a*(lobes*2.+1.)-uTime)*(.2+uHigh*uReact);
+    float d=r-R;
+    float amp=exp(-age*.7)*(i==0?.6+.9*KICK:.6);
+    h+=sin(d*62.)*exp(-d*d*150.)*amp;
+    line+=exp(-abs(d)*260.)*amp;
+  }
+  h+=sin(r*70.-uTime*2.)*.06*(.3+BASS)*exp(-r*1.6);
+  return h;
+}
+float waterH(vec2 p,out float line){
+  if(uVar.z<.5) return waveH(p,line);
+  vec2 o=vec2(.38,0.);
+  float l1,l2;
+  float h=waveH(p-o,l1)+waveH(p+o,l2);
+  line=l1+l2;
+  return h;
+}
+// zwraca (odbłysk + linia czoła fali, cieniowanie, wysokość)
+vec3 water(vec2 p){
+  const float e=.0015;
+  float line,tmp;
+  float h=waterH(p,line),hx=waterH(p+vec2(e,0.),tmp),hy=waterH(p+vec2(0.,e),tmp);
+  vec3 n=normalize(vec3((h-hx)/e*.01,(h-hy)/e*.01,1.));
+  float la=uVar.w*TAU;
+  vec3 l=normalize(vec3(cos(la)*.5,sin(la)*.5,.75));
+  float spec=pow(max(dot(reflect(-l,n),vec3(0.,0.,1.)),0.),40.);
+  return vec3(spec+line*.8,dot(n,l),h);
+}
+`;
+
 export const SCENES = [
   // =====================================================================
   // GŁĘBIA — 3D
@@ -614,6 +660,19 @@ void main(){
 }`,
   },
 
+  {
+    id: 'ripples', name: 'Fale', layer: 'depth', mood: 'both',
+    frag: WATER + /* glsl */ `
+void main(){
+  vec2 p=cuv();
+  vec3 w=water(p);
+  // same grzbiety fal (odbłyski), reszta przezroczysta — prześwituje tło
+  vec3 col=uC1*w.x*(.7+.6*uInt)+uC2*max(w.z,0.)*.25;
+  col*=1.-.5*smoothstep(.35,1.2,length(p));
+  fragColor=vec4(col,cover(col));
+}`,
+  },
+
   // =====================================================================
   // TŁO
   // =====================================================================
@@ -859,6 +918,18 @@ void main(){
   }
   float pulse=.5+.5*sin(length(p)*6.-uBeats*PI*.5);
   vec3 col=mix(uC2,uC1,pulse*v)*v*(.5+.6*BASS+.4*KICK)*(.5+.5*uInt);
+  fragColor=vec4(col,1.);
+}`,
+  },
+  {
+    id: 'pond', name: 'Tafla', layer: 'back', mood: 'both',
+    frag: WATER + /* glsl */ `
+void main(){
+  vec2 p=cuv();
+  vec3 w=water(p);
+  // ciemna woda: cień/światło z nachylenia powierzchni + odbłyski na grzbietach
+  vec3 col=mix(uBg,uC2,.2)+uC2*.22*w.y+uC1*w.x*(.55+.5*uInt);
+  col*=1.-.55*smoothstep(.3,1.1,length(p));
   fragColor=vec4(col,1.);
 }`,
   },
