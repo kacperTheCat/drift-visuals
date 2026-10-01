@@ -83,8 +83,8 @@ W trakcie odliczania autopilot nie zmienia scen. Przyciski dropu można przypisa
   fraktal 2D, pasma rozchodzą się w rytm beatu), Tafla (spokojna ciemna woda: co beat
   w losowym miejscu spada kropla, stopa = mocniejsza, bas wzmacnia falę powierzchni). Organiczne: Bioluminescencja (drobny
   plankton rozbłyska falą co 2 beaty), Atrament (gruby, lśniący tusz w dwóch warstwach), Słoje,
-  Liść (obraca się, puls płynie żyłkami), Mitoza (każda komórka płynie w swoją stronę i dzieli się
-  w płynnym cyklu), Żyły (puls z wędrującego serca).
+  Liść (obraca się, puls płynie żyłkami), Mitoza (komórki zlewają się błonami przy zetknięciu,
+  dzielą z przewężeniem; każda płynie po własnym wektorze), Żyły (puls z wędrującego serca).
   Tło prześwituje tam, gdzie głębia jest pusta albo ginie we mgle.
 - **Parametry per warstwa:** głębia ma Intensywność, Reaktywność, Ruch (prędkość, 100 = normalnie)
   i Smugi. Tło ma Jasność, Reaktywność i Ruch. Smugi działają tylko na głębi, więc tło zostaje ostre.

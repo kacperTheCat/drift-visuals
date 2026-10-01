@@ -1201,32 +1201,46 @@ void main(){
   },
   {
     id: 'mitosis', name: 'Mitoza', layer: 'back', mood: 'calm',
-    // Komórki pod mikroskopem dzielą się w płynnym cyklu: pojawienie się → wzrost → podział →
-    // rozejście się córek i ich wygaszenie (bez przeskoku na początek cyklu).
+    // Komórki pod mikroskopem. Wszystkie tworzą jedno wspólne pole (miękkie łączenie jak krople),
+    // więc stykające się komórki zlewają błony w jedną, a dzielące się — przewężają i rozrywają.
+    // Każda komórka płynie po własnym wektorze i dzieli się we własnym kierunku; rodzi się
+    // i znika przez rozmiar (rośnie z punktu, kurczy się do zera).
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv()*(2.6+uVar.x*1.5);
   vec2 i=floor(p);
-  vec3 col=uBg;
+  float field=9.,nuc=0.;
+  // zasięg komórki (ruch + podział + promień) < 1 kratki, więc wystarczy 9 sąsiednich komórek
   for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){
     vec2 g=i+vec2(x,y);
     float h=hash(g);
+    float ph=fract(uTime*.035+h);                              // faza cyklu 0..1
+    float life=smoothstep(0.,.18,ph)*(1.-smoothstep(.8,1.,ph));  // narodziny i zanik przez rozmiar
+    if(life<.01) continue;
     vec2 c=g+.5+(vec2(hash(g+3.1),hash(g+7.3))-.5)*.35;
-    float ph=fract(uTime*.035+h);                            // faza cyklu 0..1
-    float vis=smoothstep(0.,.15,ph)*(1.-smoothstep(.82,1.,ph)); // płynne pojawienie i wygaszenie
-    // własny wektor ruchu komórki: płynie w swoją stronę przez cały cykl
     float va=hash(g+11.9)*6.28;
-    c+=vec2(cos(va),sin(va))*(ph-.5)*(.25+.2*hash(g+5.5));
-    float sep=smoothstep(.4,.85,ph)*.36;                     // rozchodzenie się córek
-    float da=hash(g+17.3)*6.28;                              // własny kierunek podziału
-    vec2 ax=vec2(cos(da),sin(da));
-    float r=.24+.05*smoothstep(0.,.4,ph)-.05*smoothstep(.4,.85,ph);
-    float d=smin(length(p-c-ax*sep)-r,length(p-c+ax*sep)-r,.15*(1.-smoothstep(.5,.8,ph))+.01);
-    float mem=1.-smoothstep(0.,.025,abs(d));
-    float body=1.-smoothstep(-.02,0.,d);
-    float nuc=1.-smoothstep(0.,.08,min(length(p-c-ax*sep*1.25),length(p-c+ax*sep*1.25)));
-    col+=vis*(uC2*body*.16+uC1*mem*(.32+.3*BASS)+uC2*nuc*.4*body);
+    c+=vec2(cos(va),sin(va))*(ph-.5)*(.25+.15*hash(g+5.5));     // własny wektor ruchu
+    float da=hash(g+17.3)*6.28;
+    vec2 ax=vec2(cos(da),sin(da));                               // własny kierunek podziału
+    float sep=smoothstep(.4,.85,ph)*.3;
+    float r=(.22+.05*smoothstep(0.,.4,ph)-.04*smoothstep(.4,.85,ph))*life;
+    field=smin(field,length(p-c-ax*sep)-r,.16);
+    field=smin(field,length(p-c+ax*sep)-r,.16);
+    float dn=min(length(p-c-ax*sep*1.2),length(p-c+ax*sep*1.2));
+    nuc+=life*(1.-smoothstep(0.,.075*life+.001,dn));
   }
+  float mw=.025+.015*KICK;
+  float mem=1.-smoothstep(0.,mw,abs(field));                   // błona
+  float mem2=1.-smoothstep(0.,.02,abs(field+.06));              // wewnętrzna warstwa błony
+  float body=1.-smoothstep(-.02,0.,field);
+  float thick=clamp(-field*4.,0.,1.);                           // grubsze miejsca jaśniejsze
+  vec2 tp=p*7.+vec2(uTime*.04,-uTime*.03);
+  float tex=.6*noise(tp)+.4*noise(tp*2.1+3.);                   // ziarnista cytoplazma
+  vec3 col=uBg;
+  col+=body*uC2*(.1+.3*thick)*(.6+.8*tex);
+  col+=uC1*mem*(.42+.3*BASS)+uC1*mem2*body*.12;
+  col+=uC1*exp(-max(field,0.)*22.)*.07;                         // poświata wokół błon
+  col+=mix(uC2,uC1,.45)*min(nuc,1.)*(.55+.5*KICK);
   fragColor=vec4(col*(.6+.5*uInt),1.);
 }`,
   },
