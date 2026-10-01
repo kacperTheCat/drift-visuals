@@ -710,42 +710,6 @@ void main(){
 }`,
   },
   {
-    id: 'flower', name: 'Kwiat', layer: 'depth', mood: 'both',
-    // Trzy okółki płatków rozwijają się przez 16 taktów i zamykają; stopa lekko szarpie płatkami.
-    map: /* glsl */ `
-float petals(vec3 p,float n,float len,float tilt,float off){
-  float a=atan(p.z,p.x)+off,sec=TAU/n;
-  a=mod(a+sec*.5,sec)-sec*.5;
-  float r=length(p.xz);
-  vec3 q=vec3(cos(a)*r,p.y,sin(a)*r);
-  q.xy*=rot(tilt);
-  q.x-=len*.5;
-  return sdEll(q,vec3(len*.5,.03,len*.22));
-}
-float map(vec3 p){
-  p.xz*=rot(uTime*.07);
-  float open=.5+.5*sin(uBeats*PI/32.);    // rozwijanie i zamykanie co 16 taktów
-  float tilt=mix(1.25,.1,open)+.08*KICK;
-  float n=floor(5.+uVar.x*4.);
-  float d=petals(p,n,1.3,-tilt,0.);
-  d=min(d,petals(p-vec3(0.,.05,0.),n,1.,-tilt*1.15-.15,PI/n));
-  d=min(d,petals(p-vec3(0.,.1,0.),n,.65,-tilt*1.3-.3,0.));
-  d=min(d,length(p-vec3(0.,.12,0.))-.16-.04*BASS);
-  return d*.8;
-}`,
-    frag: /* glsl */ `
-void main(){
-  vec2 uv=cuv();
-  float a=uTime*.08;
-  vec3 ro=vec3(sin(a)*3.,2.1+uVar.y*.6,cos(a)*3.);
-  vec3 rd=camera(ro,vec3(0.,.2,0.),0.)*normalize(vec3(uv,1.6));
-  float glow;float t=march(ro,rd,10.,glow);
-  float emit=0.;
-  if(t>0.){ vec3 p=ro+rd*t; emit=smoothstep(.7,1.3,length(p.xz))*(.25+.8*KICK); }
-  fragColor=shade(ro,rd,t,10.,glow,emit);
-}`,
-  },
-  {
     id: 'spine', name: 'Kręgosłup', layer: 'depth', mood: 'drive',
     // Łańcuch kręgów wije się jak wąż; skręt i światło przebiegają wzdłuż w rytm.
     map: /* glsl */ `
@@ -825,35 +789,6 @@ void main(){
   vec3 rd=camera(ro,ro+vec3(sin(uTime*.06)*.4,cos(uTime*.05)*.3,2.),0.)*normalize(vec3(uv,1.3));
   float glow;float t=march(ro,rd,14.,glow);
   fragColor=shade(ro,rd,t,14.,glow,t>0.?.08+.4*KICK:0.);
-}`,
-  },
-  {
-    id: 'shoal', name: 'Ławica', layer: 'depth', mood: 'drive',
-    // Ławica ryb płynie razem i wspólnie zmienia kierunek; ogony machają.
-    map: /* glsl */ `
-float map(vec3 p){
-  float clear=1.4-length(p);             // wolna przestrzeń wokół kamery
-  float hd=uTime*.12+.9*sin(uTime*.23);
-  vec3 dir=normalize(vec3(sin(hd),.15*sin(uTime*.4),cos(hd)));
-  p-=dir*uTime*.9;
-  vec3 c=vec3(1.15);
-  vec3 id=floor(p/c+.5);
-  vec3 q=p-id*c;
-  vec3 h=vec3(hash(id.xy+id.z*3.),hash(id.yz+5.),hash(id.zx+9.));
-  q-=(h-.5)*.5;
-  q.xz*=rot(hd);
-  q.x+=sin(q.z*16.+uTime*9.+h.x*6.)*.02*(1.+KICK);
-  float body=sdEll(q,vec3(.035,.06,.17));
-  float tail=sdEll(q-vec3(0.,0.,-.19),vec3(.008,.055,.04)); // płetwa ogonowa
-  return max(min(body,tail)*.7,clear);
-}`,
-    frag: /* glsl */ `
-void main(){
-  vec2 uv=cuv();
-  vec3 ro=vec3(0.,0.,0.);
-  vec3 rd=camera(ro,vec3(sin(uTime*.03),.1,cos(uTime*.03)),0.)*normalize(vec3(uv,1.3));
-  float glow;float t=march(ro,rd,12.,glow);
-  fragColor=shade(ro,rd,t,12.,glow,t>0.?.1+.3*KICK:0.);
 }`,
   },
 
@@ -1170,7 +1105,7 @@ void main(){
   float R=ph*1.7;
   for(int i=0;i<3;i++){
     float fi=float(i);
-    float sc=9.+fi*7.;
+    float sc=20.+fi*13.;
     vec2 drift=vec2(uTime*.04*(fi+1.),sin(uTime*.1+fi)*.4);
     vec2 q=p*sc+drift+fi*17.;
     vec2 id=floor(q),f=fract(q)-.5;
@@ -1179,67 +1114,44 @@ void main(){
     vec2 cp=(id+.5+o*.6-drift-fi*17.)/sc;        // położenie drobinki na ekranie
     float wave=exp(-pow(length(cp)-R,2.)*50.)*(1.-ph);
     float dd=length(f-o*.6);
-    float on=step(.55,h);
+    float on=step(.45,h);
     float b=.12+.1*sin(uTime*(.6+h)+h*30.)+wave*(1.2+KICK);
-    col+=mix(uC2,uC1,clamp(b,0.,1.))*on*((1.-smoothstep(0.,.06+.05*wave,dd))*b+(1.-smoothstep(0.,.4,dd))*b*.12);
+    col+=mix(uC2,uC1,clamp(b,0.,1.))*on*((1.-smoothstep(0.,.07+.06*wave,dd))*b*1.1+(1.-smoothstep(0.,.35,dd))*b*.1);
   }
   fragColor=vec4(col*(.6+.5*uInt),1.);
 }`,
   },
   {
     id: 'ink', name: 'Atrament', layer: 'back', mood: 'calm',
-    // Tusz rozlewa się w wodzie miękkimi, wijącymi się smugami; brzegi smug lekko świecą.
+    // Tusz w wodzie jako bryła: gęstość tuszu = wysokość, z cieniowaniem i odbłyskiem (jak gruba,
+    // lśniąca smuga), plus druga, głębsza i ciemniejsza warstwa poruszająca się wolniej (paralaksa).
     frag: /* glsl */ `
+float inkF(vec2 p,float t){
+  vec2 q=p+vec2(fbm(p*1.5+t),fbm(p*1.5-t+4.));
+  vec2 r=p+1.2*vec2(fbm(q*2.+vec2(1.7,9.2)+t*1.5),fbm(q*2.+vec2(8.3,2.8)-t));
+  return fbm(r*1.8);
+}
+vec3 inkLayer(vec2 p,float t,vec3 tint){
+  const float e=.004;
+  float f=inkF(p,t),fx=inkF(p+vec2(e,0.),t),fy=inkF(p+vec2(0.,e),t);
+  float ink=smoothstep(.45,.6,f);
+  vec3 n=normalize(vec3((f-fx)/e*.08,(f-fy)/e*.08,1.));
+  vec3 l=normalize(vec3(-.5,.6,.7));
+  float dif=max(dot(n,l),0.);
+  float spec=pow(max(dot(reflect(-l,n),vec3(0.,0.,1.)),0.),28.);
+  return ink*(tint*(.25+.75*dif)+uC1*spec*.6);
+}
 void main(){
   vec2 p=cuv()*(1.+uVar.x);
   float t=uTime*.05;
-  vec2 q=p+vec2(fbm(p*1.5+t),fbm(p*1.5-t+4.));
-  vec2 r=p+1.2*vec2(fbm(q*2.+vec2(1.7,9.2)+t*1.5),fbm(q*2.+vec2(8.3,2.8)-t));
-  float f=fbm(r*1.8);
-  float ink=smoothstep(.45,.62,f);
-  float edge=ink*(1.-smoothstep(.62,.82,f));
-  vec3 col=mix(uBg,uC2*.55,ink)+uC1*edge*(.22+.45*BASS);
-  fragColor=vec4(col*(.6+.5*uInt),1.);
-}`,
-  },
-  {
-    id: 'incense', name: 'Dym kadzidła', layer: 'back', mood: 'calm',
-    // Cienkie smugi dymu unoszą się od dołu, wiją i rozwiewają.
-    frag: /* glsl */ `
-void main(){
-  vec2 p=cuv();
-  vec3 col=vec3(0.);
-  for(int i=0;i<4;i++){
-    float fi=float(i);
-    float x0=(fi-1.5)*.38+(uVar.x-.5)*.3;
-    float y=p.y+.55;                                  // 0 przy dole ekranu
-    float wob=fbm(vec2(y*1.4-uTime*.22,fi*3.1))-.5;
-    float x=x0+wob*(.12+.7*y)+sin(y*3.-uTime*.5+fi)*.05*y;
-    float w=.004+.05*y*y;
-    float sm=exp(-abs(p.x-x)/w)*smoothstep(-.05,.15,y)*(1.-smoothstep(.85,1.4,y));
-    sm*=.45+.55*fbm(vec2(p.x*6.,y*4.-uTime*.35)+fi);
-    col+=mix(uC1,uC2,clamp(y*.8,0.,1.))*sm*(.3+.25*BASS);
-  }
-  fragColor=vec4(col*(.6+.5*uInt),1.);
-}`,
-  },
-  {
-    id: 'dunes', name: 'Wydmy', layer: 'back', mood: 'calm',
-    // Zmarszczki piasku na wydmach, oświetlone nisko z boku; wiatr powoli je przesuwa.
-    frag: /* glsl */ `
-float dune(vec2 p){
-  return fbm(p*vec2(.7,1.4)+vec2(uTime*.015,0.))*1.1
-        +.05*sin((p.y*1.1+fbm(p*2.)*.7)*(26.+uVar.x*14.)+p.x*2.5+uTime*.2);
-}
-void main(){
-  vec2 p=cuv()*1.4;
-  const float e=.004;
-  float h=dune(p),hx=dune(p+vec2(e,0.)),hy=dune(p+vec2(0.,e));
-  vec3 n=normalize(vec3((h-hx)/e*.12,(h-hy)/e*.12,1.));
-  vec3 l=normalize(vec3(-.85,.35,.4));
-  float dif=max(dot(n,l),0.);
-  vec3 col=mix(uBg,mix(uC2,uC1,.2)*.7,smoothstep(.1,1.2,h))+uC1*pow(dif,2.)*.55*(.7+.4*BASS);
-  col*=1.-.4*smoothstep(.5,1.4,length(p));
+  vec3 col=uBg;
+  // głębsza warstwa: większa skala, wolniejsza, przygaszona
+  col+=inkLayer(p*.7+vec2(3.1,1.7),t*.6,uC2*.6)*.45;
+  // przednia warstwa przykrywa tylną tam, gdzie jest tusz
+  vec3 front=inkLayer(p,t,mix(uC2,uC1,.25));
+  float cover=smoothstep(.45,.6,inkF(p,t));
+  col=mix(col,front,cover)+front*(1.-cover);
+  col*=1.+.3*BASS;
   fragColor=vec4(col*(.6+.5*uInt),1.);
 }`,
   },
@@ -1271,7 +1183,7 @@ float vor(vec2 p){
   return d2-d1;
 }
 void main(){
-  vec2 p=cuv()*1.25*rot(-.35+sin(uTime*.05)*.1);
+  vec2 p=cuv()*2.1*rot(uTime*.07+uVar.w*TAU);    // liść powoli się obraca (pomniejszony, mieści się w każdej pozycji)
   float inside=(p.x+1.)*(1.-p.x)*.42-abs(p.y);              // kształt liścia (>0 wewnątrz)
   float mid=1.-smoothstep(0.,.008*(1.1-p.x),abs(p.y));
   float sx=p.x-abs(p.y)*1.3,id=floor(sx/.17+.5);
@@ -1288,75 +1200,32 @@ void main(){
 }`,
   },
   {
-    id: 'scales', name: 'Łuska', layer: 'back', mood: 'drive',
-    // Łuski węża / ryby; połysk przesuwa się po nich w rytm.
-    frag: /* glsl */ `
-void main(){
-  vec2 p=cuv()*(5.+uVar.x*4.);
-  p.y+=uTime*.12;
-  vec2 id=floor(p);
-  if(mod(id.y,2.)>.5) p.x+=.5;
-  id=floor(p);
-  vec2 f=fract(p);
-  // łuski zachodzą na siebie jak dachówki: łuski z rzędu wyżej przykrywają bieżącą
-  float du=min(length(f-vec2(0.,1.)),length(f-vec2(1.,1.)));
-  float d=du<.72?du:length(f-vec2(.5,0.));
-  d/=.72;
-  float body=1.-smoothstep(.97,1.,d);
-  float rim=(1.-smoothstep(.0,.06,abs(d-.95)));
-  float sheen=pow(.5+.5*sin(p.x*.6+p.y*.4-uBeats*PI*.5),6.);
-  vec3 col=uC2*(.12+.35*(1.-d))*body+uC1*rim*.3+uC1*sheen*(1.-d)*body*(.35+.5*KICK);
-  fragColor=vec4(col*(.6+.5*uInt),1.);
-}`,
-  },
-  {
     id: 'mitosis', name: 'Mitoza', layer: 'back', mood: 'calm',
-    // Komórki pod mikroskopem powoli się dzielą (rozciągają i rozpadają na dwie).
+    // Komórki pod mikroskopem dzielą się w płynnym cyklu: pojawienie się → wzrost → podział →
+    // rozejście się córek i ich wygaszenie (bez przeskoku na początek cyklu).
     frag: /* glsl */ `
 void main(){
-  vec2 p=cuv()*(2.6+uVar.x*1.5)+vec2(uTime*.03,0.);
+  vec2 p=cuv()*(2.6+uVar.x*1.5);
   vec2 i=floor(p);
-  float field=9.,nuc=0.;
+  vec3 col=uBg;
   for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){
     vec2 g=i+vec2(x,y);
     float h=hash(g);
-    vec2 c=g+.5+(vec2(hash(g+3.1),hash(g+7.3))-.5)*.4;
-    float ph=fract(uTime*.04+h);                 // faza podziału
-    float sep=smoothstep(.45,1.,ph)*.28;
-    vec2 ax=vec2(cos(h*6.28),sin(h*6.28));
-    float r=.3-.06*smoothstep(.45,1.,ph);
-    float d=smin(length(p-c-ax*sep)-r,length(p-c+ax*sep)-r,.15);
-    field=min(field,d);
-    nuc+=1.-smoothstep(0.,.09,min(length(p-c-ax*sep*1.3),length(p-c+ax*sep*1.3)));
-  }
-  float mem=1.-smoothstep(0.,.025,abs(field));
-  float cell=1.-smoothstep(-.02,0.,field);
-  vec3 col=uBg+uC2*cell*.18+uC1*mem*(.35+.3*BASS)+uC2*nuc*.45;
-  fragColor=vec4(col*(.6+.5*uInt),1.);
-}`,
-  },
-  {
-    id: 'roots', name: 'Korzenie', layer: 'back', mood: 'both',
-    // Kłącza rozrastają się od dołu ekranu przez frazę (16 taktów), potem zaczynają od nowa.
-    frag: /* glsl */ `
-void main(){
-  vec2 p=cuv();
-  float grow=smoothstep(0.,.9,fract(uBeats/64.))*1.3;   // jak wysoko sięgają korzenie
-  vec3 col=vec3(0.);
-  for(int i=0;i<7;i++){
-    float fi=float(i);
-    float y=p.y+.55;                            // 0 przy dole
-    float x0=(fi-3.)*.27+(hash(vec2(fi,1.))-.5)*.15;
-    float x=x0+(fbm(vec2(y*1.8,fi*2.3))-.5)*.5*y;
-    float w=.012*(1.-y/1.4);
-    float d=abs(p.x-x);
-    float on=step(y,grow*(.7+.3*hash(vec2(fi,4.))));
-    float root=(1.-smoothstep(w*.5,w+.003,d))*on*step(0.,y);
-    // odgałęzienie
-    float bx=x+(y-.3-fi*.03)*.6*(hash(vec2(fi,8.))-.5)*2.;
-    float br=(1.-smoothstep(.002,.008,abs(p.x-bx)))*step(.3+fi*.03,y)*on*.7;
-    float tip=exp(-pow(y-grow*(.7+.3*hash(vec2(fi,4.))),2.)*400.)*exp(-d*d*2000.);
-    col+=uC2*(root+br)*.6+uC1*tip*(.8+KICK);
+    vec2 c=g+.5+(vec2(hash(g+3.1),hash(g+7.3))-.5)*.35;
+    float ph=fract(uTime*.035+h);                            // faza cyklu 0..1
+    float vis=smoothstep(0.,.15,ph)*(1.-smoothstep(.82,1.,ph)); // płynne pojawienie i wygaszenie
+    // własny wektor ruchu komórki: płynie w swoją stronę przez cały cykl
+    float va=hash(g+11.9)*6.28;
+    c+=vec2(cos(va),sin(va))*(ph-.5)*(.25+.2*hash(g+5.5));
+    float sep=smoothstep(.4,.85,ph)*.36;                     // rozchodzenie się córek
+    float da=hash(g+17.3)*6.28;                              // własny kierunek podziału
+    vec2 ax=vec2(cos(da),sin(da));
+    float r=.24+.05*smoothstep(0.,.4,ph)-.05*smoothstep(.4,.85,ph);
+    float d=smin(length(p-c-ax*sep)-r,length(p-c+ax*sep)-r,.15*(1.-smoothstep(.5,.8,ph))+.01);
+    float mem=1.-smoothstep(0.,.025,abs(d));
+    float body=1.-smoothstep(-.02,0.,d);
+    float nuc=1.-smoothstep(0.,.08,min(length(p-c-ax*sep*1.25),length(p-c+ax*sep*1.25)));
+    col+=vis*(uC2*body*.16+uC1*mem*(.32+.3*BASS)+uC2*nuc*.4*body);
   }
   fragColor=vec4(col*(.6+.5*uInt),1.);
 }`,

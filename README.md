@@ -76,15 +76,15 @@ W trakcie odliczania autopilot nie zmienia scen. Przyciski dropu można przypisa
   wyłączone (zakomentowane w `js/scenes.js`); żeby je przywrócić, usuń `// ` z ich linii. Klik w scenę
   płynnie do niej przechodzi, a czas przejścia ustawiasz w sekcji „Głębia”.
 - **Organiczne (druga seria):** Grzybnia (lot przez sieć włókien z impulsami), Muszla (spirala łodzika,
-  kamera bez końca wkręca się do środka), Kwiat (płatki rozwijają się i zamykają co 16 taktów),
-  Kręgosłup (wijący się łańcuch kręgów), Kosmki (tunel z falujących wypustek), Nasiona (wirujące strąki),
-  Ławica (ryby płyną razem i zmieniają kierunek). Sceny bez klawisza (powyżej 21.) wybierasz kliknięciem.
+  kamera bez końca wkręca się do środka), Kręgosłup (wijący się łańcuch kręgów), Kosmki (tunel
+  z falujących wypustek), Nasiona (wirujące strąki). Sceny bez klawisza (powyżej 21.) wybierasz kliknięciem.
 - **Tło** (`G` / `Shift+G`): Mgła, Poświata, Horyzont, Moiré, Strata, Skaner, Pustka
   (prawie czarne — sama głębia na czerni), Pył, Zorza, Raster, Izolinie, Julia (płynący
   fraktal 2D, pasma rozchodzą się w rytm beatu), Tafla (spokojna ciemna woda: co beat
-  w losowym miejscu spada kropla, stopa = mocniejsza, bas wzmacnia falę powierzchni). Organiczne: Bioluminescencja (plankton
-  rozbłyska falą co 2 beaty), Atrament, Dym kadzidła, Wydmy, Słoje, Liść (puls płynie żyłkami),
-  Łuska, Mitoza (dzielące się komórki), Korzenie (rosną od dołu przez frazę), Żyły (puls z wędrującego serca).
+  w losowym miejscu spada kropla, stopa = mocniejsza, bas wzmacnia falę powierzchni). Organiczne: Bioluminescencja (drobny
+  plankton rozbłyska falą co 2 beaty), Atrament (gruby, lśniący tusz w dwóch warstwach), Słoje,
+  Liść (obraca się, puls płynie żyłkami), Mitoza (każda komórka płynie w swoją stronę i dzieli się
+  w płynnym cyklu), Żyły (puls z wędrującego serca).
   Tło prześwituje tam, gdzie głębia jest pusta albo ginie we mgle.
 - **Parametry per warstwa:** głębia ma Intensywność, Reaktywność, Ruch (prędkość, 100 = normalnie)
   i Smugi. Tło ma Jasność, Reaktywność i Ruch. Smugi działają tylko na głębi, więc tło zostaje ostre.
