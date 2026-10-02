@@ -886,10 +886,10 @@ void main(){
   {
     id: 'ribs', name: 'Żebra', layer: 'depth', mood: 'drive',
     // Klatka piersiowa z kręgosłupem (ten sam świat co Kręgosłup); w środku pulsuje rdzeń.
-    // Wariacja (uVar.x) otwiera żebra jak skrzydła na zawiasach przy kręgosłupie.
+    // Żebra rozchylone jak skrzydła na zawiasach przy kręgosłupie; wariacja (uVar.x) zmienia stopień otwarcia.
     map: /* glsl */ `
 const float RB=.62; // z kręgosłupa (tył klatki)
-float ribOpen(){ return smoothstep(.35,.85,uVar.x)+.06*KICK; }
+float ribOpen(){ return .75+.25*uVar.x+.06*KICK; }
 float rib(vec3 p,float id){
   float t=id/9.,op=ribOpen();
   float br=1.+.04*sin(uTime*.6)+.06*BASS;
@@ -920,9 +920,6 @@ float map(vec3 p){
   float pro=sdSeg(v,vec3(0.,0.,.08),vec3(0.,-.1,.28),.025);
   float tr=sdSeg(vec3(abs(v.x),v.yz),vec3(0.,0.,.06),vec3(.17,-.02,.1),.022);
   d=smin(d,min(min(disc,pro),tr),.04);
-  float op=clamp(ribOpen(),0.,1.);
-  float st=sdSeg(p,vec3(0.,.55,-.12-op*.5),vec3(0.,-.85,-.8-op*.5),.045*(1.-op))+op*.1;
-  d=smin(d,st,.05);
   return min(d,heart(p))*.6;
 }`,
     frag: /* glsl */ `

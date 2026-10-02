@@ -81,7 +81,7 @@ W trakcie odliczania autopilot nie zmienia scen. Przyciski dropu można przypisa
   z falujących wypustek), Nasiona (wirujące strąki). Sceny bez klawisza (powyżej 21.) wybierasz kliknięciem.
 - **Płyny (koniec listy):** Ferrofluid (czarna ciecz; pod nią dryfuje magnes, kolce rosną tam, gdzie
   jest magnes, i wydłużają się z basem i stopą), Lampa lawa, Wir (lejek, obroty z basem),
-  Żebra (klatka piersiowa z kręgosłupem i pulsującym rdzeniem; wariacja otwiera żebra jak skrzydła).
+  Żebra (klatka piersiowa z kręgosłupem i pulsującym rdzeniem; żebra rozchylone jak skrzydła, wariacja zmienia stopień otwarcia).
 - **Tło** (`G` / `Shift+G`): Mgła, Poświata, Horyzont, Moiré, Strata, Skaner, Pustka
   (prawie czarne — sama głębia na czerni), Pył, Zorza, Raster, Izolinie, Julia (płynący
   fraktal 2D, pasma rozchodzą się w rytm beatu), Tafla (spokojna ciemna woda: co beat
@@ -92,7 +92,8 @@ W trakcie odliczania autopilot nie zmienia scen. Przyciski dropu można przypisa
   Płyny (koniec listy): Cymatyka (fale stojące z częstotliwości), Kaustyki, Marmurkowanie, Olej na wodzie,
   oraz symulacje (stan żyje między klatkami, `js/sim.js`): **Ciecz** — prawdziwa symulacja płynu, stopa
   wstrzykuje barwne wiry, bas stale miesza; **Reakcja-dyfuzja** — wzory Turinga rosnące na żywo, stopa
-  zasiewa nowe plamy, wariacja zmienia rodzaj wzoru (koral / plamy / robaki / komórki).
+  zasiewa nowe plamy, wariacja zmienia rodzaj wzoru (koral / plamy / robaki / komórki). Wzór rośnie, aż
+  przestanie przybywać, potem powoli się cofa i odrasta od nowa z kilku zarodków.
   Tło prześwituje tam, gdzie głębia jest pusta albo ginie we mgle.
 - **Parametry per warstwa:** głębia ma Intensywność, Reaktywność, Ruch (prędkość, 100 = normalnie)
   i Smugi. Tło ma Jasność, Reaktywność i Ruch. Smugi działają tylko na głębi, więc tło zostaje ostre.

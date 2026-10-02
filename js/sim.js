@@ -82,6 +82,9 @@ void main(){
   if(dot(d,d)<uR) s.g=1.;
   fragColor=vec4(s,0.,1.);
 }`,
+  // Próbka pokrycia: siatka 32×32 punktów (1 = jest wzór), czytana co pół sekundy.
+  probe: `uniform sampler2D uS;
+void main(){ fragColor=vec4(step(.2,texture(uS,vUv).g),0.,0.,1.); }`,
   display: `uniform sampler2D uS;uniform vec2 uTx;uniform vec3 uBg,uC1,uC2;uniform float uInt,uKick;
 void main(){
   float b=texture(uS,vUv).g;
@@ -265,6 +268,68 @@ class RDSim extends SimBase {
     this.p = {};
     for (const [k, src] of Object.entries(RD)) this.p[k] = this.prog(src, `rd-${k}`);
     this.st = null;
+    // Cykl: wzór rośnie, aż przestanie przybywać, potem się cofa (wyższe "kill"), a po zniknięciu rośnie od nowa.
+    this.phase = 'grow';
+    this.cov = 0;
+    this.covHist = [];
+    this.phaseT = 0;
+    this.probeT = 0;
+    this.kd = 0; // dodatkowe kill w fazie cofania
+    const gl = this.gl;
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 32, 32, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    const fbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+    this.probeTgt = { tex: t, fbo, w: 32, h: 32 };
+    this.probeBuf = new Uint8Array(32 * 32 * 4);
+  }
+
+  measure() {
+    const gl = this.gl;
+    this.pass(this.p.probe, { uS: this.st.a }, {}, this.probeTgt);
+    gl.readPixels(0, 0, 32, 32, gl.RGBA, gl.UNSIGNED_BYTE, this.probeBuf);
+    let n = 0;
+    for (let i = 0; i < this.probeBuf.length; i += 4) if (this.probeBuf[i] > 127) n++;
+    return n / 1024;
+  }
+
+  seedDots(n) {
+    const aspect = this.aspect;
+    for (let i = 0; i < n; i++) {
+      this.pass(this.p.seed, { uS: this.st.a }, { uPt: [0.15 + 0.7 * Math.random(), 0.15 + 0.7 * Math.random()], uR: 0.0008, uAspect: aspect, uInit: 0 }, this.st.b);
+      this.st.swap();
+    }
+  }
+
+  cycle(dt) {
+    this.phaseT += dt;
+    this.probeT += dt;
+    if (this.probeT < 0.5) return;
+    this.probeT = 0;
+    this.cov = this.measure();
+    const h = this.covHist;
+    h.push(this.cov);
+    if (h.length > 8) h.shift();
+    if (this.phase === 'grow') {
+      // Wzór wypełnił ekran albo od ~4 s prawie nie przybywa → zaczynamy cofanie.
+      const stalled = h.length === 8 && this.cov - h[0] < 0.01 && this.phaseT > 8;
+      if (this.cov > 0.92 || (stalled && this.cov > 0.15) || this.phaseT > 90) {
+        this.phase = 'decay';
+        this.phaseT = 0;
+        this.kd = 0;
+        h.length = 0;
+      }
+    } else if (this.cov < 0.01 || this.phaseT > 60) {
+      // Prawie nic nie zostało → nowe zarodki i rośniemy od nowa.
+      this.phase = 'grow';
+      this.phaseT = 0;
+      h.length = 0;
+      this.seedDots(3 + Math.floor(Math.random() * 4));
+    }
   }
 
   // Rodzaje wzorów (feed, kill): koral, plamy, robaki, komórki.
@@ -289,9 +354,15 @@ class RDSim extends SimBase {
       this.aspect = aspect;
       this.pass(p.seed, { uS: this.st.a }, { uPt: [-9, -9], uR: 0, uAspect: aspect, uInit: 1 }, this.st.b);
       this.st.swap();
+      this.phase = 'grow';
+      this.phaseT = 0;
+      this.covHist.length = 0;
     }
     const st = this.st;
-    if (kickHit) {
+    this.cycle(dt);
+    // Cofanie: kill rośnie stopniowo, więc wzór topnieje od brzegów zamiast zniknąć naraz.
+    this.kd = this.phase === 'decay' ? Math.min(0.025, this.kd + dt * 0.0004) : 0;
+    if (kickHit && this.phase === 'grow') {
       this.pass(p.seed, { uS: st.a }, { uPt: [Math.random(), Math.random()], uR: 0.0004 + 0.0006 * f.kick, uAspect: aspect, uInit: 0 }, st.b);
       st.swap();
     }
@@ -299,7 +370,7 @@ class RDSim extends SimBase {
     const iters = Math.round(6 + 10 * slot.v[1] * (0.5 + L.react));
     const tx = [1 / st.w, 1 / st.h];
     for (let i = 0; i < iters; i++) {
-      this.pass(p.step, { uS: st.a }, { uTx: tx, uF: F, uK: K }, st.b);
+      this.pass(p.step, { uS: st.a }, { uTx: tx, uF: F, uK: K + this.kd }, st.b);
       st.swap();
     }
   }
