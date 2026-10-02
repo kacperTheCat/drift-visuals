@@ -883,6 +883,65 @@ void main(){
   fragColor=shade(ro,rd,t,12.,glow,emit);
 }`,
   },
+  {
+    id: 'ribs', name: 'Żebra', layer: 'depth', mood: 'drive',
+    // Klatka piersiowa z kręgosłupem (ten sam świat co Kręgosłup); w środku pulsuje rdzeń.
+    // Wariacja (uVar.x) otwiera żebra jak skrzydła na zawiasach przy kręgosłupie.
+    map: /* glsl */ `
+const float RB=.62; // z kręgosłupa (tył klatki)
+float ribOpen(){ return smoothstep(.35,.85,uVar.x)+.06*KICK; }
+float rib(vec3 p,float id){
+  float t=id/9.,op=ribOpen();
+  float br=1.+.04*sin(uTime*.6)+.06*BASS;
+  float a=(mix(.45,1.,smoothstep(0.,.55,t))-.12*smoothstep(.7,1.,t))*br,b=a*.68;
+  vec3 q=p-vec3(0.,.95-id*.2,0.);
+  q.y+=op*.12*(1.-t);
+  q.y-=q.z*.7;
+  q.z+=b;
+  float th=atan(q.x,q.z);
+  float thm=mix(2.8,1.7,smoothstep(.55,1.,t));
+  float d;
+  if(th<0.) d=length(vec3(q.x,q.y,q.z-b));
+  else if(th<thm) d=length(vec2((length(q.xz/vec2(a,b))-1.)*mix(b,a,sin(th)),q.y*.85));
+  else d=length(q-vec3(a*sin(thm),0.,b*cos(thm)));
+  return d-.035;
+}
+float heart(vec3 p){ return length(p-vec3(0.,.15,RB-.6))-(.17+.07*KICK+.04*BASS); }
+float map(vec3 p){
+  p.x+=sin(p.y*.9+uTime*.4)*.06*(1.+BASS);
+  vec3 s=vec3(abs(p.x),p.y,p.z-RB);
+  s.xz*=rot(-clamp(ribOpen(),0.,1.)*1.1);
+  float yy=s.y-s.z*.7;
+  float id=clamp(floor((.95-yy)/.2+.5),1.,8.);
+  float d=min(rib(s,id),min(rib(s,id-1.),rib(s,id+1.)));
+  float vid=clamp(floor(p.y/.2+.5),-7.,6.);
+  vec3 v=p-vec3(0.,vid*.2-.05,RB+.1);
+  float disc=max(length(v.xz)-.1,abs(v.y)-.06)-.015;
+  float pro=sdSeg(v,vec3(0.,0.,.08),vec3(0.,-.1,.28),.025);
+  float tr=sdSeg(vec3(abs(v.x),v.yz),vec3(0.,0.,.06),vec3(.17,-.02,.1),.022);
+  d=smin(d,min(min(disc,pro),tr),.04);
+  float op=clamp(ribOpen(),0.,1.);
+  float st=sdSeg(p,vec3(0.,.55,-.12-op*.5),vec3(0.,-.85,-.8-op*.5),.045*(1.-op))+op*.1;
+  d=smin(d,st,.05);
+  return min(d,heart(p))*.6;
+}`,
+    frag: /* glsl */ `
+void main(){
+  vec2 uv=cuv();
+  float a=sin(uTime*.05)*.5+(uVar.y-.5)*.6;
+  vec3 ro=vec3(sin(a)*4.,.15+.3*sin(uTime*.05)+uVar.z*.4,-cos(a)*4.);
+  vec3 rd=camera(ro,vec3(0.,.05,.15),.05*sin(uTime*.1))*normalize(vec3(uv,1.45));
+  float glow;float t=march(ro,rd,9.,glow);
+  float emit=0.;
+  if(t>0.){
+    vec3 p=ro+rd*t;
+    float id=floor((.95-(p.y-(p.z-RB)*.7))/.2+.5);
+    emit=smoothstep(.85,1.,fract(id*.125-uBeats*.25))*(.4+.9*KICK);
+    emit+=smoothstep(.03,0.,heart(p))*(1.+1.5*KICK);
+  }
+  fragColor=shade(ro,rd,t,15.,glow,emit);
+}`,
+  },
 
   // =====================================================================
   // TŁO

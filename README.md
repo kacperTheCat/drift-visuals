@@ -80,7 +80,8 @@ W trakcie odliczania autopilot nie zmienia scen. Przyciski dropu można przypisa
   kamera bez końca wkręca się do środka), Kręgosłup (wijący się łańcuch kręgów), Kosmki (tunel
   z falujących wypustek), Nasiona (wirujące strąki). Sceny bez klawisza (powyżej 21.) wybierasz kliknięciem.
 - **Płyny (koniec listy):** Ferrofluid (czarna ciecz; pod nią dryfuje magnes, kolce rosną tam, gdzie
-  jest magnes, i wydłużają się z basem i stopą), Lampa lawa, Wir (lejek, obroty z basem).
+  jest magnes, i wydłużają się z basem i stopą), Lampa lawa, Wir (lejek, obroty z basem),
+  Żebra (klatka piersiowa z kręgosłupem i pulsującym rdzeniem; wariacja otwiera żebra jak skrzydła).
 - **Tło** (`G` / `Shift+G`): Mgła, Poświata, Horyzont, Moiré, Strata, Skaner, Pustka
   (prawie czarne — sama głębia na czerni), Pył, Zorza, Raster, Izolinie, Julia (płynący
   fraktal 2D, pasma rozchodzą się w rytm beatu), Tafla (spokojna ciemna woda: co beat
