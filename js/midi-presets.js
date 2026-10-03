@@ -30,23 +30,28 @@ export const PRESETS = {
         // pady, bank A
         'note:10:36': 'aFlash',
         'note:10:37': 'aStrobe',
-        'note:10:38': 'aBlack',
-        'note:10:39': 'tap',
-        'note:10:40': 'aVary',
-        'note:10:41': 'aVaryBack',
-        'note:10:42': 'mNextBlend',
-        'note:10:43': 'auto',
+        'note:10:38': 'aGlitch',
+        'note:10:39': 'aVary',
+        'note:10:40': 'mPrevBack',
+        'note:10:41': 'mNextBack',
+        'note:10:42': 'aVaryBack',
+        'note:10:43': 'sync',
         // pady, bank B
-        'note:10:44': 'mPrevScene',
-        'note:10:45': 'mNextScene',
-        'note:10:46': 'mPrevBack',
-        'note:10:47': 'mNextBack',
+        'note:10:44': 'aFlash',
+        'note:10:45': 'aStrobe',
+        'note:10:46': 'aGlitch',
+        'note:10:47': 'aVary',
         'note:10:48': 'mNextPal',
-        'note:10:49': 'mNextPalBack',
-        'note:10:50': 'aDepth',
+        'note:10:49': 'mPrevBack',
+        'note:10:50': 'mNextBack',
         'note:10:51': 'sync',
+        // przyciski wysyłające CC
+        'cc:1:109': 'tap',
+        'cc:1:28': 'mNextPalBack',
+        'cc:1:105': 'aVaryBack',
+        'cc:1:107': 'mNextPalBack',
       };
-      // klawisze od C3 (nuta 48): kolejne sceny głębi
+      // klawisze od C3 (nuta 48): kolejne sceny głębi (dalsze sceny — po przełączeniu oktawy w górę)
       DEPTH.forEach((sc, i) => (m[`note:1:${48 + i}`] = `scene:${sc.id}`));
       return m;
     },

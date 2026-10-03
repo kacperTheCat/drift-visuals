@@ -50,35 +50,35 @@ export class Director {
     this.s = Object.assign(
       {
         // głębia
-        intensity: 0.75,
-        react: 0.8,
-        speed: 1,
-        trails: 0.5,
+        intensity: 1,
+        react: 1,
+        speed: 2,
+        trails: 1,
         // tło
-        backReact: 0.5,
-        backSpeed: 0.6,
+        backReact: 1,
+        backSpeed: 2,
         // jakość obrazu: wygładzanie krawędzi głębi (FXAA), render w 1,5× rozdzielczości
         fxaa: true,
-        hiRes: false,
+        hiRes: true,
         // ręczny drop: co narasta w trakcie odliczania i co się dzieje w momencie dropu
-        dropBars: 4,
-        dropBuild: { blur: true, accel: true, dark: false, strobe: true, glitch: false, shatter: false },
+        dropBars: 1,
+        dropBuild: { blur: true, accel: true, dark: false, strobe: false, glitch: true, shatter: false },
         dropHit: { vary: true, flash: true },
         transition: 'bar', // przejście scen głębi
         backTransition: 'bar2', // przejście teł
-        phrase: 16,
-        autopilot: true,
+        phrase: 8,
+        autopilot: false,
         autoPalette: true,
-        bpmAuto: true,
-        palette: 0, // paleta głębi
+        bpmAuto: false,
+        palette: 5, // paleta głębi
         backPalette: 2, // paleta tła
         linkPalettes: false, // tło w kolorach głębi
         blend: 'normal',
         autoBlend: true,
-        balance: 0.5,
-        backLevel: 0.6,
+        balance: 0.646,
+        backLevel: 1,
         autoBack: true,
-        pool: {},
+        pool: { lines: false },
         deviceId: null,
       },
       load(),

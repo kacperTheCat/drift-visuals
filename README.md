@@ -146,9 +146,10 @@ przypisań). Można go też wczytać przyciskiem „Układ MiniLab 3” w trybie
 | Gałki 5–8 (CC 110 111 116 117) | Balans Tło ↔ Głębia, Tło: Jasność, Reaktywność, Ruch |
 | Fader 1 / 2 (CC 14 / 15) | przewijanie scen głębi / przewijanie teł |
 | Fader 3 / 4 (CC 30 / 31) | wolne — przypisz w trybie Learn |
-| Pady bank A | Flash, Strobo, Blackout, TAP, Wariacja głębi, Wariacja tła, Nakładanie ▶, Autopilot |
-| Pady bank B | ◀ ▶ scena głębi, ◀ ▶ tło, kolory głębi ▶, kolory tła ▶, Głębia on/off, SYNC |
-| Klawisze od C3 | kolejne sceny głębi (jedna scena na klawisz) |
+| Pady bank A | Flash, Strobo, Glitch, Wariacja głębi, ◀ ▶ tło, Wariacja tła, SYNC |
+| Pady bank B | Flash, Strobo, Glitch, Wariacja głębi, kolory głębi ▶, ◀ ▶ tło, SYNC |
+| Przyciski CC 109 / 105 / 28 / 107 | TAP, Wariacja tła, kolory tła ▶ (×2) |
+| Klawisze od C3 | kolejne sceny głębi (jedna scena na klawisz; dalsze — po Oct+) |
 
 Port „Minilab3 MCU/HUI” (tryb DAW) jest ignorowany — dubluje fadery jako pitch bend.
 Pitch bend z normalnego portu (pasek dotykowy) można przypisać w trybie Learn jak gałkę.
