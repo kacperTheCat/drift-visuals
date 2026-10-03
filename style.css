@@ -60,6 +60,10 @@ button.on kbd { color: #000; border-color: rgba(0,0,0,.3); }
 .meter { position: relative; width: 14px; height: 34px; background: #1b1b20; border-radius: 3px; overflow: hidden; }
 .meter b { position: absolute; inset: 0; background: var(--accent); transform-origin: bottom; transform: scaleY(0); }
 .meter span { position: absolute; bottom: -1px; left: 0; right: 0; font-size: 7px; text-align: center; color: #000; mix-blend-mode: difference; filter: invert(1); }
+.meter.in b { background: #6fd18f; }
+.gain { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 64px; margin-right: 4px; }
+.gain input { width: 64px; margin: 0; }
+.gain small { font: 10px ui-monospace, Menlo, monospace; color: var(--muted); }
 .kick { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); margin-left: 6px; opacity: .15; }
 .state {
   margin-left: auto; font: 700 12px ui-monospace, Menlo, monospace; letter-spacing: .15em;

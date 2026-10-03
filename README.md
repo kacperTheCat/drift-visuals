@@ -29,6 +29,8 @@ daje dostęp do wejścia audio tylko w bezpiecznym kontekście.
    (redukcja szumu, AGC, echo) jest wyłączone, każde pasmo ma własną automatyczną
    normalizację, a stopa wykrywana jest tylko w paśmie sub (35–110 Hz), które
    w klubie dominuje. Test na syntetycznym sygnale przy −82 dB wykrył 28/28 stóp.
+   Gdy mikrofon słabo łapie dźwięk, podkręć **czułość** (suwak przy miernikach, 0…+40 dB)
+   tak, żeby zielony pasek IN sięgał ponad połowę. Suwak można przypisać do MIDI w trybie Learn.
 4. **Bez dźwięku:** tryb Demo i `TAP` (T). Do prób w domu wybierz z listy „Plik audio…” — DRIFT
    odtworzy nagranie i zareaguje na nie jak na żywe audio. Wizualizacje dalej chodzą w tempie,
    a zegar sam trzyma BPM.

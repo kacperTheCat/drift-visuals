@@ -57,6 +57,8 @@ export class Director {
         // tło
         backReact: 1,
         backSpeed: 2,
+        // czułość wejścia audio w dB
+        inputGain: 0,
         // jakość obrazu: wygładzanie krawędzi głębi (FXAA), render w 1,5× rozdzielczości
         fxaa: true,
         hiRes: true,
@@ -84,6 +86,7 @@ export class Director {
       load(),
     );
     for (const sc of SCENES) if (!(sc.id in this.s.pool)) this.s.pool[sc.id] = true;
+    this.audio.setGainDb(this.s.inputGain);
     if (!PALETTES[this.s.palette]) this.s.palette = 0;
     if (!PALETTES[this.s.backPalette]) this.s.backPalette = 0;
     if (!BLENDS.some(([m]) => m === this.s.blend)) this.s.blend = 'normal';

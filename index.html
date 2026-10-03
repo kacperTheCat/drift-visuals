@@ -26,6 +26,11 @@
       </div>
 
       <div class="group meters">
+        <div class="meter in" title="Poziom sygnału na wejściu (po wzmocnieniu czułości)"><b id="mIn"></b><span>IN</span></div>
+        <label class="gain" title="Czułość wejścia: wzmocnienie sygnału przed analizą. Podkręć, gdy mikrofon słabo łapie dźwięk (pasek IN powinien sięgać ponad połowę).">
+          <input type="range" id="inputGain" min="0" max="40" step="1">
+          <small id="inputGainVal">+0 dB</small>
+        </label>
         <div class="meter"><b id="mSub"></b><span>SUB</span></div>
         <div class="meter"><b id="mLow"></b><span>LOW</span></div>
         <div class="meter"><b id="mMid"></b><span>MID</span></div>

@@ -9,6 +9,13 @@ export class AudioIn {
     this.el = null;
     this.kind = 'none';
     this.label = '';
+    this.gainLin = 1;
+  }
+
+  // Czułość w dB (0 = bez zmian, +20 dB = 10× głośniej).
+  setGainDb(db) {
+    this.gainLin = Math.pow(10, db / 20);
+    if (this.gain) this.gain.gain.setTargetAtTime(this.gainLin, this.ctx.currentTime, 0.05);
   }
 
   ensureCtx() {
@@ -21,6 +28,10 @@ export class AudioIn {
       a.maxDecibels = -10;
       this.analyser = a;
       this.freq = new Float32Array(a.frequencyBinCount);
+      // Czułość wejścia: wzmocnienie przed analizą (nie wpływa na to, co słychać z pliku).
+      this.gain = this.ctx.createGain();
+      this.gain.gain.value = this.gainLin;
+      this.gain.connect(a);
     }
     this.resume();
     return this.ctx;
@@ -61,7 +72,7 @@ export class AudioIn {
     this.stop();
     this.stream = stream;
     this.src = this.ctx.createMediaStreamSource(stream);
-    this.src.connect(this.analyser);
+    this.src.connect(this.gain);
     this.kind = 'input';
     this.label = stream.getAudioTracks()[0]?.label || 'wejście audio';
   }
@@ -74,7 +85,7 @@ export class AudioIn {
     el.loop = true;
     this.el = el;
     this.src = this.ctx.createMediaElementSource(el);
-    this.src.connect(this.analyser);
+    this.src.connect(this.gain);
     this.src.connect(this.ctx.destination);
     el.play();
     this.kind = 'file';

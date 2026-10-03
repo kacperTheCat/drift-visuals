@@ -277,6 +277,10 @@ function runControl() {
   }
   const sliders = ['intensity', 'react', 'speed', 'trails', 'backLevel', 'backReact', 'backSpeed'];
   for (const k of sliders) $(k).addEventListener('input', (e) => d.set(k, e.target.value / 100));
+  $('inputGain').addEventListener('input', (e) => {
+    d.set('inputGain', +e.target.value);
+    d.audio.setGainDb(+e.target.value);
+  });
   $('auto').addEventListener('click', () => d.toggleAutopilot());
   $('autoPal').addEventListener('change', (e) => d.set('autoPalette', e.target.checked));
   $('aVary').addEventListener('click', () => d.vary());
@@ -370,6 +374,7 @@ function runControl() {
     'mNextBlend', 'mBalCenter', 'mNextPal', 'mNextPalBack'])
     tag($(id), id);
   document.querySelectorAll('main input[type=range]').forEach((el) => tag(el, el.id));
+  tag($('inputGain'), 'inputGain');
 
   const midi = new Midi(d, (msg, names) => {
     setText($('midiStatus'), msg);
@@ -566,6 +571,11 @@ function runControl() {
     if (d.source === 'demo') Object.assign(vals, { sub: d.demo.out.sub, low: d.demo.out.low });
     for (const [id, k] of Object.entries(meters)) $(id).style.transform = `scaleY(${Math.min(1, vals[k]).toFixed(3)})`;
     $('kick').style.opacity = (0.15 + 0.85 * f.kick).toFixed(2);
+    // IN: poziom sygnału po wzmocnieniu; -90 dB = pusto, -40 dB = pełno (głośna muzyka z linii ≈ -50)
+    const lvl = d.source === 'demo' ? 0 : Math.max(0, Math.min(1, (d.level + 90) / 50));
+    $('mIn').style.transform = `scaleY(${lvl.toFixed(3)})`;
+    if (document.activeElement !== $('inputGain')) $('inputGain').value = d.s.inputGain;
+    setText($('inputGainVal'), `+${d.s.inputGain} dB`);
 
     let status = '';
     if (d.source === 'demo') status = 'demo';
