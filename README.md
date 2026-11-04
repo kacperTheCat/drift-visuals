@@ -1,222 +1,118 @@
-# DRIFT — wizualizacje dla DJ (hypnotic / deep techno)
+# DRIFT — live visuals for hypnotic & deep techno
 
-Przeglądarkowy VJ tool: shadery WebGL2 reagujące na dźwięk, zegar BPM i autopilot,
-który sam zmienia sceny na granicach fraz, a na breakdownach i dropach reaguje osobno.
+![Ferrofluid scene](docs/img/ferro.jpg)
 
-## Start
+DRIFT is a browser-based VJ tool for DJs. Every visual is a GLSL shader rendered live on
+the GPU: raymarched 3D scenes, fractals, organic forms, and real fluid and reaction–diffusion
+simulations. They react to the music you play, follow its tempo, and can run on autopilot.
+You can also drive everything by hand or from a MIDI controller.
+
+**[▶ Live demo](DEMO_URL)**: open it in Chrome. It runs in demo mode with a synthetic beat
+until you pick an audio input.
+
+No dependencies, no build step, no framework. It is plain ES modules, WebGL2, Web Audio and Web MIDI.
+
+| | | |
+|---|---|---|
+| ![Ribs](docs/img/ribs.jpg) | ![Mandelbulb](docs/img/bulb.jpg) | ![Mycelium](docs/img/mycel.jpg) |
+| ![Reaction–diffusion](docs/img/rd.jpg) | ![Cymatics](docs/img/cymatics.jpg) | ![Fluid simulation](docs/img/fluid.jpg) |
+
+## Features
+
+- **Two layers.** A *depth* foreground (27 scenes: raymarched 3D, fractals such as the Menger
+  sponge, Mandelbulb, KIFS and Apollonian gasket, and organic and liquid forms) is composited
+  over a *backdrop* (27 flat textures, including a GPU fluid solver and Gray–Scott
+  reaction–diffusion). Each layer has its own palette, intensity, reactivity, speed and
+  transition length. Layers can be blended as normal, screen, mask or difference.
+- **Audio analysis.** Four bands with per-band automatic gain. The kick is detected from
+  spectral flux in the sub band. A BPM clock locks onto the kicks using an interval histogram,
+  regression and a PLL. Tap tempo, typed BPM and MIDI clock are also supported. The tool also
+  detects breakdowns and drops.
+- **Autopilot.** Changes scenes, variations, palettes and blend modes on phrase boundaries. It
+  calms down in breakdowns and cuts back in hard on the drop.
+- **Manual drop.** Arm a drop 1, 4, 8 or 16 bars ahead. You choose what builds up during the
+  countdown (blur, acceleration, darkening, strobe, glitch, shatter) and which scene, backdrop
+  and palettes come in on the drop.
+- **Performance FX.** Flash, strobe, blackout, an RGB-split glitch, and *shatter*, which breaks
+  the image into falling Voronoi shards.
+- **Variations.** Each scene has four smoothly interpolated parameters. One button reshapes the
+  scene without changing it.
+- **Projector output.** A separate output window opens on the second screen (Window Management
+  API). The control panel stays on the laptop.
+- **MIDI.** Learn mode (click a control, move a knob), a mapping table with live values,
+  automatic detection of absolute vs relative encoders, and a built-in preset for the
+  Arturia MiniLab 3.
+- **Keyboard shortcuts** for everything. Press `?` in the app to list them.
+
+## Run it locally
 
 ```bash
-cd ~/Documents/visuals && python3 serve.py
+git clone REPO_URL drift && cd drift
+python3 serve.py 8080        # or: npm start
 ```
 
-Otwórz `http://localhost:8080` w Chrome. Localhost jest wymagany, bo przeglądarka
-daje dostęp do wejścia audio tylko w bezpiecznym kontekście.
+Open <http://localhost:8080> in **Chrome**. The microphone, audio inputs and MIDI only work on
+`localhost` or HTTPS. Opening `index.html` from disk does not work.
 
-**Dwa ekrany:** klawisz `O` otwiera okno wyjścia na projektorze (szczegóły niżej, w sekcji „Projektor”).
-**Jeden ekran:** `F` daje pełny ekran bez panelu, `Esc` wraca do panelu.
+### Getting sound in
 
-## Jak podpiąć dźwięk (od najlepszego)
+1. **Line from the mixer to an audio interface** (best). Take booth, rec or a second master
+   output into any USB interface and pick it from the source list.
+2. **DJ software on the same Mac.** Route its master through
+   [BlackHole](https://existential.audio/blackhole/) and pick "BlackHole 2ch".
+3. **Microphone.** This works too: browser voice processing is disabled. Raise the
+   **sensitivity** slider (0…+40 dB) until the green IN meter reaches past half.
+4. **No sound.** Use demo mode, tap tempo, or pick "Audio file…" to rehearse with a recording.
 
-1. **Kabel z miksera → interfejs audio.** Wyjście Booth / Rec / Master 2 z miksera
-   podłącz do dowolnego interfejsu USB (albo do wejścia kontrolera, jeśli je ma).
-   W DRIFT wybierz to wejście z listy w górnym pasku (wybór od razu podłącza). Sygnał jest czysty, bez hałasu sali
-   i bez sprzężeń, a do tego niezależny od głośności w klubie.
-2. **Grasz z laptopa (Rekordbox / Traktor / Serato na tym samym Macu):** zainstaluj
-   [BlackHole 2ch](https://existential.audio/blackhole/) (darmowy). W „Audio MIDI Setup”
-   utwórz „Multi-Output Device” (kontroler + BlackHole) albo w programie DJ wyślij master
-   na BlackHole. W DRIFT wybierz z listy „BlackHole 2ch”.
-3. **Mikrofon (awaryjnie):** też działa. Przetwarzanie „rozmowowe” przeglądarki
-   (redukcja szumu, AGC, echo) jest wyłączone, każde pasmo ma własną automatyczną
-   normalizację, a stopa wykrywana jest tylko w paśmie sub (35–110 Hz), które
-   w klubie dominuje. Test na syntetycznym sygnale przy −82 dB wykrył 28/28 stóp.
-   Gdy mikrofon słabo łapie dźwięk, podkręć **czułość** (suwak przy miernikach, 0…+40 dB)
-   tak, żeby zielony pasek IN sięgał ponad połowę. Suwak można przypisać do MIDI w trybie Learn.
-4. **Bez dźwięku:** tryb Demo i `TAP` (T). Do prób w domu wybierz z listy „Plik audio…” — DRIFT
-   odtworzy nagranie i zareaguje na nie jak na żywe audio. Wizualizacje dalej chodzą w tempie,
-   a zegar sam trzyma BPM.
+## Controls at a glance
 
-Na dłuższy set warto kliknąć `SYNC 1` (Enter) na pierwszą stopę frazy. Autopilot
-liczy wtedy 16 taktów od właściwego miejsca. Po dropie wyrównuje się sam.
-
-## Jak to działa
-
-- **Analiza:** 4 pasma (sub / low / mid / high), każde normalizowane do swojego szczytu,
-  który wolno opada (AGC). Stopa = nagły skok w sub powyżej adaptacyjnego progu.
-- **Zegar:** tempo z histogramu odstępów między stopami + regresja; faza dociągana
-  do stóp (PLL). Breakdown = brak stopy przez 8 beatów. Drop = dwie stopy w odstępie
-  jednego beatu po breakdownie.
-- **Autopilot:** co 8/16/32 taktów zmienia scenę (60%) albo wariację. Na breakdown
-  płynnie przechodzi do spokojnej sceny, na drop robi cięcie do mocnej sceny
-  i flash. Kropka ● przy scenie włącza ją do puli autopilota lub z niej wyłącza.
-  Ręczna zmiana resetuje licznik, więc autopilot nie nadpisze jej od razu.
-
-## Ręczny drop
-
-Sekcja **Drop** w lewej kolumnie (klawisz `D` uzbraja / anuluje z ostatnią długością):
-1. Klikasz **1 / 4 / 8 / 16** — drop wypadnie na początku taktu za tyle taktów (zgodnie z siatką
-   beatów, więc warto wcześniej zrobić SYNC na początku frazy). Pasek odlicza takty i beaty.
-2. **Narastanie** w trakcie odliczania (do wyboru): Rozmycie (smugi rosną do maksimum),
-   Przyspieszenie (ruch coraz szybszy), Ściemnianie (obraz gaśnie), Strobo (ostatni takt:
-   ósemki, ostatnie 2 beaty: szesnastki), Glitch (narasta w ostatnich 2 taktach), Rozpad
-   (obraz pęka i rozpada się przez całe odliczanie, a na dropie składa się w jednej chwili).
-3. **Program dropu** — 4 listy: Głębia, Tło, Kolory głębi, Kolory tła. Domyślnie pokazują to,
-   co gra teraz (= bez zmian). Wybierz scenę/tło/paletę albo „losowa”, a pole się podświetli —
-   w momencie dropu wejdzie cięciem. Wybranie tego, co gra, kasuje program pola. Po dropie
-   program się czyści. Dodatkowo przełączniki „Na dropie”: Wariacja i Flash.
-   Efekty narastania puszczają od razu, a drop staje się początkiem frazy dla autopilota.
-
-W trakcie odliczania autopilot nie zmienia scen. Przyciski dropu można przypisać do MIDI
-(Learn albo okno Mapowanie). Ponowny klik tej samej długości anuluje drop.
-
-## Warstwy
-
-- **Głębia** (klawisze 1–0 i Q W E R Y U I): pierwszy plan. Łuki, Rdzeń, Pole, Pierścienie, Spirala,
-  Rtęć, Gyroid, Kryształ, Organizm i Arteria to prawdziwe 3D (raymarching). Tunel, Korytarz, Kalejdoskop,
-  Orbity i Puls są płaskie. Fraktale: Rdzeń (gąbka Mengera), Kryształ (KIFS),
-  Mandelbulb i Apollonius (lot przez jaskinie z kul). Fale: świecące kręgi widma — co pół taktu
-  rodzi się kontur w kształcie okrągłego wykresu częstotliwości i rozchodzi się, lekko skręcony. Monolity i Wodorosty są
-  wyłączone (zakomentowane w `js/scenes.js`); żeby je przywrócić, usuń `// ` z ich linii. Klik w scenę
-  płynnie do niej przechodzi; czas przejścia (cięcie / 1 beat / 1 takt / 4 takty) ustawiasz pod scenami
-  głębi. Tło ma osobny przełącznik (cięcie / 1 / 2 / 4 takty) pod listą teł.
-- **Organiczne (druga seria):** Grzybnia (lot przez sieć włókien z impulsami), Muszla (spirala łodzika,
-  kamera bez końca wkręca się do środka), Kręgosłup (wijący się łańcuch kręgów), Kosmki (tunel
-  z falujących wypustek), Nasiona (wirujące strąki). Sceny bez klawisza (powyżej 21.) wybierasz kliknięciem.
-- **Płyny (koniec listy):** Ferrofluid (czarna ciecz; pod nią dryfuje magnes, kolce rosną tam, gdzie
-  jest magnes, i wydłużają się z basem i stopą), Lampa lawa, Wir (lejek, obroty z basem),
-  Żebra (klatka piersiowa z kręgosłupem i pulsującym rdzeniem; żebra rozchylone jak skrzydła, wariacja zmienia stopień otwarcia).
-- **Tło** (`G` / `Shift+G`): Mgła, Poświata, Horyzont, Moiré, Strata, Skaner, Pustka
-  (prawie czarne — sama głębia na czerni), Pył, Zorza, Raster, Izolinie, Julia (płynący
-  fraktal 2D, pasma rozchodzą się w rytm beatu), Tafla (spokojna ciemna woda: co beat
-  w losowym miejscu spada kropla, stopa = mocniejsza, bas wzmacnia falę powierzchni). Organiczne: Bioluminescencja (drobny
-  plankton rozbłyska falą co 2 beaty), Atrament (gruby, lśniący tusz w dwóch warstwach), Słoje,
-  Liść (obraca się, puls płynie żyłkami), Mitoza (komórki zlewają się błonami przy zetknięciu,
-  dzielą z przewężeniem; każda płynie po własnym wektorze), Żyły (puls z wędrującego serca).
-  Płyny (koniec listy): Cymatyka (fale stojące z częstotliwości), Kaustyki, Marmurkowanie, Olej na wodzie,
-  oraz symulacje (stan żyje między klatkami, `js/sim.js`): **Ciecz** — prawdziwa symulacja płynu, stopa
-  wstrzykuje barwne wiry, bas stale miesza; **Reakcja-dyfuzja** — wzory Turinga rosnące na żywo, stopa
-  zasiewa nowe plamy, wariacja zmienia rodzaj wzoru (koral / plamy / robaki / komórki). Wzór rośnie, aż
-  przestanie przybywać, potem powoli się cofa i odrasta od nowa z kilku zarodków.
-  Tło prześwituje tam, gdzie głębia jest pusta albo ginie we mgle.
-- **Parametry per warstwa:** głębia ma Intensywność, Reaktywność, Ruch (prędkość, 100 = normalnie)
-  i Smugi. Tło ma Jasność, Reaktywność i Ruch. Smugi działają tylko na głębi, więc tło zostaje ostre.
-  Dobry punkt wyjścia: tło wolniej i słabiej reagujące niż głębia.
-- **Balans Tło ↔ Głębia** (`← →`, `↓` = środek): 0 to samo tło, środek to oba plany,
-  a 1 sama głębia. `L` chowa głębię i przywraca ją później.
-- **Nakładanie** (`M`) mówi, jak głębia łączy się z tłem:
-  - **Normalny:** głębia zasłania tło.
-  - **Światło:** jasne partie obu warstw się sumują.
-  - **Maska:** tło widać tylko w kształtach głębi.
-  - **Różnica:** tam, gdzie obie warstwy są jasne, robi się ciemno.
-- **Kolory per warstwa:** głębia i tło mają osobne palety (sekcja „Paleta”), np. zimna głębia
-  na ciepłym tle. „Tło w kolorach głębi” łączy je z powrotem w jedną.
-- **Autopilot** co kilka fraz zmienia tło i czasem tryb nakładania. W breakdownie przełącza
-  tło na spokojne i albo chowa głębię, albo daje spokojną scenę. Na dropie wraca z głębią cięciem.
-
-## MIDI
-
-1. Podłącz kontroler i kliknij **MIDI** w górnym pasku (Chrome zapyta o zgodę; potem włącza się sam).
-2. Kliknij **Learn**. Elementy, które da się przypisać, dostaną przerywaną ramkę.
-3. Kliknij element panelu (scenę, suwak, przycisk, paletę, tryb nakładania...), a potem
-   rusz gałką/faderem albo naciśnij pad/przycisk na kontrolerze. Gotowe. Możesz od razu
-   przypisywać kolejne.
-4. Prawy klik na elemencie w trybie Learn usuwa jego przypisanie. `Esc` lub **Learn** kończy.
-
-**Mapowanie** (przycisk w górnym pasku) to tabela wszystkich przypisań:
-- „+ Dodaj: rusz kontrolką” — ruszasz gałką/padem, pojawia się wiersz, wybierasz akcję z listy,
-- kolumna **Wartość** i **Ostatni wynik** pokazują na żywo, co przychodzi i co DRIFT z tym zrobił
-  (np. „suwak = 71% (abs)”) — od razu widać, czy kontrolka działa,
-- **Tryb gałki**: auto / absolutna / względna 64± / względna 1/127. Gdy suwak skacze od ściany
-  do ściany, ustaw „absolutna” (albo odwrotnie — „względna”, jeśli gałka się kręci bez końca
-  i suwak ledwo się rusza).
-
-- Gałki i fadery (CC) sterują suwakami w pełnym zakresie; przyciski i pady klikają przyciski.
-  **Strobo** działa tylko, póki trzymasz przycisk.
-- W trybie Learn pojawia się sekcja **Dodatkowe akcje MIDI**: następna/poprzednia scena głębi
-  i tła, kolejny tryb nakładania, balans na środek, zmiana kolorów oraz **gałki do przewijania
-  scen** (przekręcasz gałkę, sceny zmieniają się po kolei).
-- Przypisania zapisują się w przeglądarce. Status w pasku pokazuje liczbę urządzeń, przypisań
-  i ostatnio odebraną kontrolkę (przydatne, gdy nie wiadomo, co wysyła kontroler).
-- **MIDI clock:** jeśli urządzenie lub program wysyła zegar MIDI, DRIFT bierze z niego dokładne
-  BPM (w pasku pojawia się CLOCK). Komunikat Start ustawia też początek frazy.
-
-**Arturia MiniLab 3** ma gotowy układ, który ładuje się sam po podłączeniu (gdy nie masz własnych
-przypisań). Można go też wczytać przyciskiem „Układ MiniLab 3” w trybie Learn:
-
-| MiniLab 3 | DRIFT |
+| Key | Action |
 |---|---|
-| Gałki 1–4 (CC 86 87 89 90) | Głębia: Intensywność, Reaktywność, Ruch, Smugi |
-| Gałki 5–8 (CC 110 111 116 117) | Balans Tło ↔ Głębia, Tło: Jasność, Reaktywność, Ruch |
-| Fader 1 / 2 (CC 14 / 15) | przewijanie scen głębi / przewijanie teł |
-| Fader 3 / 4 (CC 30 / 31) | wolne — przypisz w trybie Learn |
-| Pady bank A | Flash, Strobo, Glitch, Wariacja głębi, ◀ ▶ tło, Wariacja tła, SYNC |
-| Pady bank B | Flash, Strobo, Glitch, Wariacja głębi, kolory głębi ▶, ◀ ▶ tło, SYNC |
-| Przyciski CC 109 / 105 / 28 / 107 | TAP, Wariacja tła, kolory tła ▶ (×2) |
-| Klawisze od C3 | kolejne sceny głębi (jedna scena na klawisz; dalsze — po Oct+) |
+| `1`–`0`, `Q`… | depth scene (`Shift` = hard cut) |
+| `G` / `Shift+G` | next / previous backdrop |
+| `V` / `Shift+V` | new variation of depth / backdrop |
+| `P` / `Shift+P` | next palette of depth / backdrop |
+| `← →` `↓` | layer balance / centre |
+| `M` | blend mode |
+| `Space` | autopilot |
+| `T` / `Enter` | tap tempo / mark phrase start |
+| `D` | arm / cancel manual drop |
+| `X` / `S` / `B` | flash / strobe (hold) / blackout |
+| `Z` / `C` | glitch (hold) / shatter |
+| `O` / `F` / `H` | output window / fullscreen / hide panel |
 
-Port „Minilab3 MCU/HUI” (tryb DAW) jest ignorowany — dubluje fadery jako pitch bend.
-Pitch bend z normalnego portu (pasek dotykowy) można przypisać w trybie Learn jak gałkę.
-Każdy komunikat MIDI jest logowany w konsoli przeglądarki (`Cmd+Option+J`) z informacją,
-czy jest przypisany; `DRIFT.midi.debug = false` wyłącza log.
+## How it is built
 
-**XDJ-RX3:** jeśli RX3 wysyła komunikaty MIDI albo zegar, DRIFT je odbierze. Po podłączeniu
-sprawdź status MIDI w pasku: pokazuje liczbę urządzeń i ostatnio odebraną kontrolkę (np. `CC21`).
+```
+js/audio.js        audio input, band analysis, kick detection, BPM clock, demo signal
+js/director.js     state, autopilot, breakdown/drop logic, builds one frame object per tick
+js/engine.js       WebGL2 renderer: two layers, transitions, trails, composite, post FX
+js/scenes.js       all scenes as GLSL source (signed distance functions + shared raymarcher)
+js/sim.js          stateful scenes: stable-fluids solver, Gray–Scott reaction–diffusion
+js/midi.js         Web MIDI: learn, mapping, encoder modes, clock
+js/main.js         control panel and output window
+```
 
-## Licznik FPS
+- **Adding a scene** means adding one object to `js/scenes.js`: an id, a name, a layer and
+  GLSL. For 3D scenes you write `float map(vec3 p)` and call the shared `march()` and `shade()`.
+  A scene that fails to compile is marked red in the panel, and the rest keeps running.
+- **Adding a palette** is one line in `js/palettes.js`.
+- **Tests** cover the audio analysis, BPM clock, MIDI encoder logic and scene definitions. They
+  run in Node with no dependencies:
 
-W prawym górnym rogu podglądu: klatki na sekundę i czas klatki. Z otwartym oknem wyjścia pokazuje
-FPS projektora („WYJŚCIE …”). Zielony = płynnie, żółty < 55 fps, czerwony < 40 fps — wtedy wyłącz
-„Wysoką rozdzielczość” albo wybierz lżejszą scenę. Podgląd schowany w tle przeglądarki jest dławiony,
-więc pokazuje mniej — miarodajne jest okno, na które patrzysz.
+  ```bash
+  npm test
+  ```
 
-## Jakość obrazu
+Code comments and the UI are in Polish. A detailed Polish manual is in
+[README.pl.md](README.pl.md).
 
-W kolumnie Głębia, „Jakość obrazu”:
-- **Wygładzanie krawędzi** (domyślnie włączone): filtr FXAA na warstwie głębi — usuwa schodki
-  na krawędziach scen 3D, praktycznie bez kosztu wydajności.
-- **Wysoka rozdzielczość** (domyślnie wyłączona): sceny liczone w 1,5× rozdzielczości i pomniejszane.
-  Najwięcej detalu, ale ok. 2× większe obciążenie karty graficznej. Render nigdy nie jest gęstszy niż
-  2 piksele na piksel ekranu, więc na ekranach Retina opcja niewiele zmienia.
+## Performance
 
-## Projektor
+Most scenes render in 3–10 ms per frame at 1080p on an Apple-silicon MacBook. Simulations run
+on fixed-size grids, so their cost does not grow with resolution. The FPS counter in the
+preview shows the output window's frame rate while that window is open.
 
-Nie duplikuj ekranów. W macOS ustaw projektor jako **rozszerzony** ekran
-(Ustawienia → Wyświetlacze, bez „Duplikuj”). Klawisz `O` otwiera okno wyjścia.
-Za pierwszym razem Chrome zapyta o dostęp do układu ekranów. Po zgodzie okno wyjścia
-otwiera się od razu na projektorze (przed zgodą trzeba je tam przeciągnąć).
-Kliknięcie w okno wyjścia włącza pełny ekran. Panel zostaje na laptopie.
+## License
 
-## Skróty
-
-| Klawisz | Akcja |
-|---|---|
-| 1–0, Q–I | scena głębi (z Shift = cięcie zamiast przejścia) |
-| G / Shift+G | następne / poprzednie tło |
-| L | głębia on/off (samo tło) |
-| ← → / Shift+← → / ↓ | balans tło/głębia / do końca / na środek |
-| M | tryb nakładania warstw |
-| Spacja | autopilot on/off |
-| T / Enter | tap tempo / początek frazy (BPM można też wpisać w polu) |
-| D | uzbrój / anuluj ręczny drop |
-| P / Shift+P | następna paleta głębi / tła |
-| V / Shift+V | nowa wariacja sceny głębi / tła |
-| X / S (trzymaj) / B | flash / strobo / blackout |
-| Z (trzymaj) | glitch: rozszczepienie RGB, przesunięte pasy i bloki, w rytm ósemek |
-| C | rozpad: obraz pęka i przez 4 takty rozpada się na opadające odłamki (pod nimi delikatny szum); ponownie = złożenie |
-| [ ] | intensywność głębi |
-| F / H / O | pełny ekran / ukryj panel / okno wyjścia |
-
-## Dodawanie własnych rzeczy
-
-- **Scena:** dopisz obiekt w `js/scenes.js` (`id`, `name`, `layer`, `mood`, `frag`,
-  a dla sceny 3D także `map`). Dostępne uniformy są opisane w `COMMON`. Scena, która się nie skompiluje, jest oznaczona
-  na czerwono w panelu (błąd w tooltipie), a reszta działa dalej.
-- **Paleta:** jedna linijka w `js/palettes.js`.
-
-## Pliki
-
-- `js/audio.js`: wejście audio, analiza pasm, detekcja stopy, zegar BPM, tryb demo
-- `js/director.js`: stan, autopilot, breakdown/drop, budowa klatki
-- `js/engine.js`: renderer (przejścia między scenami, feedback/smugi, flash, blackout)
-- `js/sim.js`: sceny-symulacje z pamięcią (ciecz, reakcja-dyfuzja)
-- `js/scenes.js`, `js/palettes.js`: treść wizualna
-- `js/main.js`, `js/keys.js`: panel, okno wyjścia i skróty
+[MIT](LICENSE)

@@ -85,6 +85,9 @@ export class Director {
       },
       load(),
     );
+    // Pula autopilota: dopisz nowe sceny, usuń wpisy po scenach, których już nie ma.
+    const ids = new Set(SCENES.map((sc) => sc.id));
+    for (const id of Object.keys(this.s.pool)) if (!ids.has(id)) delete this.s.pool[id];
     for (const sc of SCENES) if (!(sc.id in this.s.pool)) this.s.pool[sc.id] = true;
     this.audio.setGainDb(this.s.inputGain);
     if (!PALETTES[this.s.palette]) this.s.palette = 0;

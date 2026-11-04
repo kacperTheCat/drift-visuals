@@ -91,39 +91,6 @@ export const SCENES = [
   // =====================================================================
   // GŁĘBIA — 3D
   // =====================================================================
-  // WYŁĄCZONE: Monolity — usuń "// " z poniższych linii, żeby przywrócić.
-//   {
-//     id: 'pillars', name: 'Monolity', layer: 'depth', mood: 'drive',
-//     map: /* glsl */ `
-// float map(vec3 p){
-//   vec2 id=floor(p.xz/4.);
-//   vec3 q=p;q.xz=mod(q.xz,4.)-2.;
-//   float h=.8+hash(id)*2.2;
-//   float w=.3+.05*KICK;
-//   float b=sdBox(q-vec3(0.,h-2.,0.),vec3(w,h,w));
-//   return min(b,p.y+2.);
-// }`,
-//     frag: /* glsl */ `
-// void main(){
-//   vec2 uv=cuv();
-//   vec3 ro=vec3(sin(uTime*.13)*.6,-.6+sin(uTime*.07)*.5,uTime*2.);
-//   vec3 ta=ro+vec3(sin(uTime*.1)*.8*uVar.x,.1,3.);
-//   vec3 rd=camera(ro,ta,sin(uTime*.05)*.15*uVar.y)*normalize(vec3(uv,1.5));
-//   float glow;float t=march(ro,rd,40.,glow);
-//   float emit=0.;
-//   if(t>0.){
-//     vec3 p=ro+rd*t;
-//     if(p.y<-1.99){
-//       vec2 g=abs(fract(p.xz*.5)-.5);
-//       emit=(1.-smoothstep(0.,.03,min(g.x,g.y)))*.35;
-//     } else {
-//       float bnd=fract(p.y*1.5-uBeats*.5);
-//       emit=step(bnd,.08)*(.4+1.2*KICK);
-//     }
-//   }
-//   fragColor=shade(ro,rd,t,40.,glow,emit);
-// }`,
-//   },
   {
     id: 'arches', name: 'Łuki', layer: 'depth', mood: 'drive',
     map: /* glsl */ `
@@ -528,39 +495,6 @@ void main(){
   // =====================================================================
   // GŁĘBIA — organiczne 3D
   // =====================================================================
-  // WYŁĄCZONE: Wodorosty — usuń "// " z poniższych linii, żeby przywrócić.
-//   {
-//     id: 'kelp', name: 'Wodorosty', layer: 'depth', mood: 'calm',
-//     map: /* glsl */ `
-// float map(vec3 p){
-//   vec2 id=floor(p.xz/2.);
-//   vec3 q=p;q.xz=mod(q.xz,2.)-1.;
-//   float h=hash(id);
-//   float sway=(p.y+2.)*.25; // im wyżej, tym mocniej faluje
-//   q.x+=sin(p.y*1.2+uTime*.8+h*6.)*.25*sway*(.6+.8*uVar.x)*(1.+BASS);
-//   q.z+=cos(p.y*.9+uTime*.6+h*4.)*.2*sway;
-//   float r=.12+.05*sin(p.y*4.-uTime*2.+h*10.)+.05*KICK;
-//   float d=max(length(q.xz)-r,p.y-(1.+h*(1.5+2.*uVar.y)));
-//   return min(d,p.y+2.)*.6;
-// }`,
-//     frag: /* glsl */ `
-// void main(){
-//   vec2 uv=cuv();
-//   vec3 ro=vec3(.15*sin(uTime*.2),-.6+.3*sin(uTime*.11),uTime*.8);
-//   vec3 ta=ro+vec3(.4*sin(uTime*.07),.35,3.);
-//   vec3 rd=camera(ro,ta,sin(uTime*.05)*.1)*normalize(vec3(uv,1.4));
-//   float glow;float t=march(ro,rd,22.,glow);
-//   float emit=0.;
-//   if(t>0.){
-//     vec3 p=ro+rd*t;
-//     if(p.y>-1.98){
-//       float h=hash(floor(p.xz/2.));
-//       emit=smoothstep(.85,1.,fract(p.y*.5-uBeats*.25+h))*(.4+1.2*KICK);
-//     }
-//   }
-//   fragColor=shade(ro,rd,t,22.,glow,emit);
-// }`,
-//   },
   {
     id: 'organism', name: 'Organizm', layer: 'depth', mood: 'both',
     map: /* glsl */ `

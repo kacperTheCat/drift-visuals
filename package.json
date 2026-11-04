@@ -1,0 +1,11 @@
+{
+  "name": "drift-visuals",
+  "private": true,
+  "type": "module",
+  "description": "Audio-reactive VJ tool for hypnotic / deep techno — WebGL2, Web Audio, Web MIDI. No dependencies, no build step.",
+  "scripts": {
+    "start": "python3 serve.py 8080",
+    "test": "node --test test/*.test.js"
+  },
+  "license": "MIT"
+}
