@@ -1,6 +1,7 @@
 # DRIFT — wizualizacje dla DJ (hypnotic / deep techno)
 
-> Interfejs aplikacji jest po angielsku; ta instrukcja używa polskich nazw elementów
+> Polska wersja instrukcji. Wersja angielska, z nazwami dokładnie jak w interfejsie: [MANUAL.md](MANUAL.md).
+> Interfejs aplikacji jest po angielsku; tutaj używane są polskie nazwy elementów
 > (np. Głębia = Depth, Tło = Backdrop, Rozpad = Shatter, Wariacja = Variation, Nakładanie = Blend).
 
 Przeglądarkowy VJ tool: shadery WebGL2 reagujące na dźwięk, zegar BPM i autopilot,
@@ -9,7 +10,7 @@ który sam zmienia sceny na granicach fraz, a na breakdownach i dropach reaguje 
 ## Start
 
 ```bash
-cd ~/Documents/visuals && python3 serve.py
+python3 serve.py 8080
 ```
 
 Otwórz `http://localhost:8080` w Chrome. Localhost jest wymagany, bo przeglądarka

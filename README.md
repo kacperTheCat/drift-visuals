@@ -107,7 +107,8 @@ js/main.js         control panel and output window
   npm test
   ```
 
-Code comments are in Polish. A detailed manual (in Polish) is in [README.pl.md](README.pl.md).
+The full manual, covering the drop, MIDI, the projector setup and every scene, is in
+[docs/MANUAL.md](docs/MANUAL.md). A Polish version is in [docs/MANUAL.pl.md](docs/MANUAL.pl.md).
 
 ## Performance
 
