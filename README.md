@@ -1,4 +1,4 @@
-# DRIFT — live visuals for hypnotic & deep techno
+# DRIFT — live visuals for music
 
 ![Ferrofluid scene](docs/img/ferro.jpg)
 
