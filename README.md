@@ -17,12 +17,13 @@ No dependencies, no build step, no framework. It is plain ES modules, WebGL2, We
 
 | | |
 |---|---|
-| ![Ribs](docs/gif/ribs.gif) | ![Ripples](docs/gif/ripples.gif) |
-| ![Fluid simulation](docs/gif/fluid.gif) | ![Reaction–diffusion](docs/gif/rd.gif) |
+| ![Spine](docs/gif/spine.gif) | ![Ribs](docs/gif/ribs.gif) |
+| ![Ripples](docs/gif/ripples.gif) | ![Fluid simulation](docs/gif/fluid.gif) |
+| ![Reaction–diffusion](docs/gif/rd.gif) | ![Mandelbulb](docs/img/bulb.jpg) |
 
-| | | |
-|---|---|---|
-| ![Mandelbulb](docs/img/bulb.jpg) | ![Mycelium](docs/img/mycel.jpg) | ![Cymatics](docs/img/cymatics.jpg) |
+| | |
+|---|---|
+| ![Mycelium](docs/img/mycel.jpg) | ![Cymatics](docs/img/cymatics.jpg) |
 
 All images are rendered by the DRIFT engine itself, reacting to a synthetic 128 BPM beat.
 
