@@ -1,27 +1,27 @@
-// Sceny = fragment shadery GLSL. Każda dostaje te same uniformy (patrz COMMON).
+// Scenes = GLSL fragment shaders. Each one gets the same uniforms (see COMMON).
 //
-// Dwie warstwy:
-//   layer: 'depth' — pierwszy plan z głębią (klawisze 1–9). Zwraca kolor
-//                    "premultiplied" + alfę = ile zasłania tło (0 = puste, prześwituje tło).
-//   layer: 'back'  — tło (backdrop): płaskie, wolne tekstury. Alfa ignorowana.
+// Two layers:
+//   layer: 'depth' — foreground with depth (keys 1–9). Returns a
+//                    "premultiplied" colour + alpha = how much it covers the backdrop (0 = empty, backdrop shows through).
+//   layer: 'back'  — backdrop: flat, slow textures. Alpha is ignored.
 //
-// Scena 3D (raymarching): podaj `map` (funkcja odległości `float map(vec3 p)`) i `frag` z main().
-// W main() są dostępne: camera(ro,ta,roll), march(ro,rd,maxd,glow), shade(ro,rd,t,maxd,glow,emit).
+// 3D scene (raymarching): provide `map` (a distance function `float map(vec3 p)`) and `frag` with main().
+// Available in main(): camera(ro,ta,roll), march(ro,rd,maxd,glow), shade(ro,rd,t,maxd,glow,emit).
 //
-// mood: 'drive' (groove, stopa gra), 'calm' (breakdown), 'both'.
-// uVar.xyzw to 4 losowe parametry 0..1 — autopilot powoli je zmienia ("wariacje").
+// mood: 'drive' (groove, kick playing), 'calm' (breakdown), 'both'.
+// uVar.xyzw are 4 random parameters 0..1 — the autopilot slowly changes them ("variations").
 
 export const COMMON = /* glsl */ `#version 300 es
 precision highp float;
 in vec2 vUv;
 out vec4 fragColor;
 uniform vec2 uRes;
-uniform float uTime;    // czas "przepływu" — przyspiesza z basem i stopą
-uniform float uBeats;   // licznik beatów (ciągły, zsynchronizowany z BPM)
-uniform float uKick;    // obwiednia stopy 0..1
+uniform float uTime;    // "flow" time — speeds up with bass and kick
+uniform float uBeats;   // beat counter (continuous, synced to the BPM)
+uniform float uKick;    // kick envelope 0..1
 uniform float uBass, uMid, uHigh, uEnergy;
-uniform float uReact;   // reaktywność 0..1
-uniform float uInt;     // intensywność 0..1
+uniform float uReact;   // reactivity 0..1
+uniform float uInt;     // intensity 0..1
 uniform vec3 uBg, uC1, uC2;
 uniform vec4 uVar;
 #define PI 3.14159265359
@@ -35,9 +35,9 @@ float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
 float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<5;i++){v+=a*noise(p);p=rot(.5)*p*2.03+11.7;a*=.5;}return v;}
 vec2 cuv(){return (gl_FragCoord.xy-.5*uRes)/uRes.y;}
 float px(){return 1.5/uRes.y;}
-// antyaliasowana linia: 1 gdy d < w
+// antialiased line: 1 when d < w
 float band(float d,float w){float aa=fwidth(d)+1e-5;return 1.-smoothstep(w-aa,w+aa,d);}
-// alfa dla płaskich scen pierwszego planu: jasne = zasłania tło
+// alpha for flat foreground scenes: bright = covers the backdrop
 float cover(vec3 c){return clamp(max(max(c.r,c.g),c.b)*3.,0.,1.);}
 float sdBox(vec3 p,vec3 b){vec3 q=abs(p)-b;return length(max(q,0.))+min(max(q.x,max(q.y,q.z)),0.);}
 float sdTorus(vec3 p,vec2 t){return length(vec2(length(p.xz)-t.x,p.y))-t.y;}
@@ -47,13 +47,13 @@ float sdEll(vec3 p,vec3 r){float k0=length(p/r),k1=length(p/(r*r));return k0*(k0
 float sdSeg(vec3 p,vec3 a,vec3 b,float r){vec3 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h)-r;}
 `;
 
-// Wstawiane między `map` a `frag` scen 3D.
+// Inserted between `map` and `frag` of 3D scenes.
 export const RAYMARCH = /* glsl */ `
 vec3 calcNormal(vec3 p){
   const vec2 e=vec2(.0015,-.0015);
   return normalize(e.xyy*map(p+e.xyy)+e.yyx*map(p+e.yyx)+e.yxy*map(p+e.yxy)+e.xxx*map(p+e.xxx));
 }
-// Zwraca odległość trafienia albo -1; glow = poświata z przelotów blisko powierzchni.
+// Returns the hit distance or -1; glow = glow from passes close to the surface.
 float march(vec3 ro,vec3 rd,float maxd,out float glow){
   float t=0.;glow=0.;
   for(int i=0;i<80;i++){
@@ -70,7 +70,7 @@ mat3 camera(vec3 ro,vec3 ta,float roll){
   vec3 u=normalize(cross(up,w)),v=cross(w,u);
   return mat3(u,v,w);
 }
-// Oświetlenie + mgła głębi. Pudło (t<0) jest przezroczyste — tam prześwituje tło.
+// Lighting + depth fog. A miss (t<0) is transparent — the backdrop shows through there.
 vec4 shade(vec3 ro,vec3 rd,float t,float maxd,float glow,float emit){
   vec3 g=uC1*glow*(.5+.8*KICK);
   float ga=clamp(glow,0.,1.);
@@ -78,7 +78,7 @@ vec4 shade(vec3 ro,vec3 rd,float t,float maxd,float glow,float emit){
   vec3 p=ro+rd*t,n=calcNormal(p);
   vec3 l=normalize(vec3(.5,.8,-.4));
   float dif=max(dot(n,l),0.);
-  float head=max(dot(n,-rd),0.); // "latarka" z kamery — doświetla zakamarki
+  float head=max(dot(n,-rd),0.); // a "flashlight" from the camera — lights up the nooks
   float rim=pow(1.-head,3.);
   vec3 col=uC2*(.08+.45*dif+.3*head)+uC1*rim*.5+uC1*emit;
   float fog=exp(-pow(t/maxd,2.)*3.);
@@ -89,7 +89,7 @@ vec4 shade(vec3 ro,vec3 rd,float t,float maxd,float glow,float emit){
 
 export const SCENES = [
   // =====================================================================
-  // GŁĘBIA — 3D
+  // DEPTH — 3D
   // =====================================================================
   {
     id: 'arches', name: 'Arches', layer: 'depth', mood: 'drive',
@@ -160,7 +160,7 @@ float map(vec3 p){
   float h=sin(id.x*.45+uTime*.8)*cos(id.y*.35+uTime*.6)*.8*(.4+BASS)+hash(id)*.3;
   float s=.3+.1*KICK*step(.7,hash(id+floor(uBeats)));
   float b=sdBox(q-vec3(0.,h,0.),vec3(s))-.02;
-  return min(b*.8,.4); // sąsiednie kostki mają inne wysokości — krok ostrożny
+  return min(b*.8,.4); // neighbouring boxes have different heights — careful step
 }`,
     frag: /* glsl */ `
 void main(){
@@ -270,7 +270,7 @@ float map(vec3 p){
   float s=1.2+uVar.x*.8;
   vec3 q=p*s;
   float g=(abs(dot(sin(q),cos(q.zxy)))-(.08+.14*uVar.y+.1*BASS))/s*.6;
-  float tube=1.2-length(p.xy-path(p.z)); // pusty kanał na trasie kamery
+  float tube=1.2-length(p.xy-path(p.z)); // an empty channel along the camera path
   return max(g,tube);
 }`,
     frag: /* glsl */ `
@@ -321,7 +321,7 @@ void main(){
   },
 
   // =====================================================================
-  // GŁĘBIA — płaskie (alfa z jasności)
+  // DEPTH — flat (alpha from brightness)
   // =====================================================================
   {
     id: 'tunnel', name: 'Tunnel', layer: 'depth', mood: 'drive',
@@ -426,7 +426,7 @@ void main(){
   },
 
   // =====================================================================
-  // GŁĘBIA — fraktale 3D
+  // DEPTH — 3D fractals
   // =====================================================================
   {
     id: 'bulb', name: 'Mandelbulb', layer: 'depth', mood: 'both',
@@ -435,7 +435,7 @@ float map(vec3 p){
   p.xz*=rot(uTime*.1);p.yz*=rot(.3+uTime*.07);
   float sc=1.+.05*KICK;
   p/=sc;
-  // "Moc" fraktala powoli oddycha; bas lekko ją podbija.
+  // The fractal "power" slowly breathes; the bass nudges it up.
   float pw=6.+uVar.x*3.+.8*sin(uTime*.08)+.6*BASS;
   vec3 z=p;float dr=1.,r=length(z);
   for(int i=0;i<6;i++){
@@ -493,7 +493,7 @@ void main(){
   },
 
   // =====================================================================
-  // GŁĘBIA — organiczne 3D
+  // DEPTH — organic 3D
   // =====================================================================
   {
     id: 'organism', name: 'Organism', layer: 'depth', mood: 'both',
@@ -525,7 +525,7 @@ void main(){
   {
     id: 'artery', name: 'Artery', layer: 'depth', mood: 'drive',
     map: /* glsl */ `
-// Fala skurczu przesuwająca się wzdłuż tunelu w rytm beatu.
+// A contraction wave moving along the tunnel in time with the beat.
 float peri(float z){return exp(-pow((fract(z*.1-uBeats*.25)-.5)*6.,2.));}
 float map(vec3 p){
   float a=atan(p.y,p.x),z=p.z;
@@ -552,42 +552,42 @@ void main(){
 
   {
     id: 'ripples', name: 'Ripples', layer: 'depth', mood: 'both',
-    // Kręgi widma: co pół taktu w środku rodzi się kontur w kształcie okrągłego wykresu
-    // częstotliwości (płaty rosną ze średnimi/wysokimi) i rozchodzi się na zewnątrz.
-    // Każdy krąg jest lekko obrócony (wir), kolor przechodzi z akcentu w drugi kolor palety.
-    // uVar: x = liczba płatów, y = odstęp kręgów, z = skręcenie (wir), w = grubość linii.
+    // Spectrum rings: every half bar a contour shaped like a circular frequency plot
+    // is born in the centre (lobes grow with mids/highs) and spreads outwards.
+    // Each ring is slightly rotated (a swirl), its colour shifts from the accent to the palette's second colour.
+    // uVar: x = lobe count, y = ring spacing, z = twist (swirl), w = line thickness.
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv();
   float r=length(p),a=atan(p.y,p.x);
   float lobes=floor(3.+uVar.x*7.);
   float gap=.07+.07*uVar.y;
-  float ph=fract(uBeats*.5);               // nowy krąg co 2 beaty
+  float ph=fract(uBeats*.5);               // a new ring every 2 beats
   float thick=.0025+.004*uVar.w;
   vec3 col=vec3(0.);
   for(int i=0;i<9;i++){
     float fi=float(i);
-    float age=(fi+ph)/9.;                  // 0 = środek, 1 = brzeg
+    float age=(fi+ph)/9.;                  // 0 = centre, 1 = edge
     float R=(fi+ph)*gap;
     float tw=(fi+ph)*(uVar.z-.5)*.9+uTime*.08*(mod(fi,2.)*2.-1.);
     float shape=.035*sin(a*lobes+tw)*(.3+uMid*uReact)+.015*sin(a*(lobes*2.+1.)-tw*1.7)*(.2+uHigh*uReact);
     float d=abs(r-R-shape*(.4+age*2.));
     float amp=(1.-age)*(1.-age)*(i==0?1.+1.2*KICK:1.);
-    float line=exp(-d/thick)+.25*exp(-d/(thick*8.));  // ostra linia + miękka poświata
+    float line=exp(-d/thick)+.25*exp(-d/(thick*8.));  // sharp line + soft glow
     col+=mix(uC1,uC2,age)*line*amp;
   }
-  col+=uC1*exp(-r*r*60.)*(.15+.6*BASS);  // pulsujące źródło w środku
+  col+=uC1*exp(-r*r*60.)*(.15+.6*BASS);  // pulsing source in the centre
   col*=.6+.6*uInt;
   fragColor=vec4(col,cover(col));
 }`,
   },
 
   // =====================================================================
-  // GŁĘBIA — organiczne 3D (druga seria)
+  // DEPTH — organic 3D (second series)
   // =====================================================================
   {
     id: 'mycel', name: 'Mycelium', layer: 'depth', mood: 'both',
-    // Lot przez sieć splątanych włókien (przecięcia dwóch gyroidów); po nitkach biegną impulsy.
+    // Flight through a web of tangled fibres (intersections of two gyroids); impulses run along the threads.
     map: /* glsl */ `
 float gy(vec3 p){ return dot(sin(p),cos(p.zxy)); }
 float map(vec3 p){
@@ -613,12 +613,12 @@ void main(){
   },
   {
     id: 'nautilus', name: 'Nautilus', layer: 'depth', mood: 'calm',
-    // Spirala logarytmiczna łodzika; skala rośnie płynnie, więc kamera bez końca "wkręca się" do środka.
+    // A nautilus logarithmic spiral; the scale grows smoothly, so the camera endlessly "screws" into the centre.
     map: /* glsl */ `
 float map(vec3 p){
   p.xz*=rot(uTime*.06);
   float b=.17+.03*uVar.x;
-  float sc=exp(fract(uTime*.03)*b*TAU);   // samopodobieństwo: powiększenie o jeden zwój = ten sam kształt
+  float sc=exp(fract(uTime*.03)*b*TAU);   // self-similarity: zooming in by one whorl = the same shape
   p*=sc;
   float r=length(p.xz),a=atan(p.z,p.x);
   float k=(log(max(r,1e-4))/b-a)/TAU;
@@ -628,8 +628,8 @@ float map(vec3 p){
     float Rc=exp(b*(a+TAU*kk));
     d=min(d,length(vec2(r-Rc,p.y))-Rc*(.42+.04*KICK));
   }
-  d=max(abs(d)-.01,p.y);                 // otwarta od góry: widać komory
-  d+=.004*sin(a*26.+uTime*.5);           // żeberka
+  d=max(abs(d)-.01,p.y);                 // open at the top: the chambers are visible
+  d+=.004*sin(a*26.+uTime*.5);           // ribs
   return d*.6/sc;
 }`,
     frag: /* glsl */ `
@@ -645,7 +645,7 @@ void main(){
   },
   {
     id: 'spine', name: 'Spine', layer: 'depth', mood: 'drive',
-    // Łańcuch kręgów wije się jak wąż; skręt i światło przebiegają wzdłuż w rytm.
+    // A chain of vertebrae winds like a snake; the twist and the light travel along it in rhythm.
     map: /* glsl */ `
 float map(vec3 p){
   float x=p.x;
@@ -674,7 +674,7 @@ void main(){
   },
   {
     id: 'villi', name: 'Villi', layer: 'depth', mood: 'calm',
-    // Tunel z falujących wypustek (jak wnętrze jelita); końcówki lekko świecą.
+    // A tunnel of waving protrusions (like the inside of an intestine); the tips glow softly.
     map: /* glsl */ `
 float map(vec3 p){
   float r=length(p.xy),a=atan(p.y,p.x);
@@ -703,7 +703,7 @@ void main(){
   },
   {
     id: 'seeds', name: 'Seeds', layer: 'depth', mood: 'both',
-    // Chmura strąków wirujących w strumieniu powietrza; stopa je rozpycha.
+    // A cloud of pods spinning in an air stream; the kick pushes them apart.
     map: /* glsl */ `
 float map(vec3 p){
   p.xy*=rot(p.z*.12+uTime*.08);
@@ -727,17 +727,17 @@ void main(){
   },
 
   // =====================================================================
-  // GŁĘBIA — płyny
+  // DEPTH — liquids
   // =====================================================================
   {
     id: 'ferro', name: 'Ferrofluid', layer: 'depth', mood: 'drive',
-    // Czarna, lustrzana ciecz magnetyczna; pod nią powoli dryfuje magnes — kolce rosną tam,
-    // gdzie jest magnes, a ciecz lekko się za nim wybrzusza. Bas i stopa wydłużają kolce.
+    // Black, mirror-like magnetic liquid; a magnet slowly drifts beneath it — spikes grow where
+    // the magnet is, and the liquid bulges slightly after it. Bass and kick lengthen the spikes.
     map: /* glsl */ `
 vec2 magnet(){ return vec2(sin(uTime*.07)*.55,cos(uTime*.053+1.)*.5); }
 float map(vec3 p){
   vec2 m=magnet();
-  float r=length(p.xz-m);                                   // odległość od magnesu
+  float r=length(p.xz-m);                                   // distance from the magnet
   float base=sdEll(p-vec3(m.x*.35,-.15,m.y*.35),vec3(1.25,.45+.08*(1.-smoothstep(0.,.8,length(p.xz-m))),1.25));
   vec2 c=vec2(.17);
   vec2 id=floor((p.xz+c*.5)/c);
@@ -757,7 +757,7 @@ void main(){
   if(t<0.){ fragColor=vec4(uC1*glow*.3,clamp(glow*.5,0.,1.)); return; }
   vec3 p=ro+rd*t,n=calcNormal(p);
   vec3 r=reflect(rd,n);
-  float env=smoothstep(-.2,.8,r.y);                                   // odbicie "nieba"
+  float env=smoothstep(-.2,.8,r.y);                                   // "sky" reflection
   float spec=pow(max(dot(r,normalize(vec3(.5,.8,-.3))),0.),60.);
   float rim=pow(1.-max(dot(n,-rd),0.),4.);
   vec3 col=uBg*.5+uC2*env*.35+uC1*(spec*1.3+rim*.35);
@@ -766,7 +766,7 @@ void main(){
   },
   {
     id: 'lavalamp', name: 'Lava lamp', layer: 'depth', mood: 'calm',
-    // Miękkie bryły wosku unoszą się, łączą i opadają w szklanym walcu; ciepło świecą.
+    // Soft blobs of wax rise, merge and sink in a glass cylinder; they glow warmly.
     map: /* glsl */ `
 float map(vec3 p){
   float d=1e3;
@@ -792,7 +792,7 @@ void main(){
   },
   {
     id: 'vortex', name: 'Vortex', layer: 'depth', mood: 'both',
-    // Lejek wiru wciągający ciecz spiralą; obroty przyspieszają z basem, grzbiety świecą na stopę.
+    // A vortex funnel pulling the liquid in a spiral; rotation speeds up with the bass, crests glow on the kick.
     map: /* glsl */ `
 float wH(vec2 xz){
   float r=length(xz),a=atan(xz.y,xz.x);
@@ -819,10 +819,10 @@ void main(){
   },
   {
     id: 'ribs', name: 'Ribs', layer: 'depth', mood: 'drive',
-    // Klatka piersiowa z kręgosłupem (ten sam świat co Kręgosłup); w środku pulsuje rdzeń.
-    // Żebra rozchylone jak skrzydła na zawiasach przy kręgosłupie; wariacja (uVar.x) zmienia stopień otwarcia.
+    // A ribcage with a spine (the same world as Spine); a core pulses inside.
+    // Ribs spread like wings hinged at the spine; variation (uVar.x) changes how wide they open.
     map: /* glsl */ `
-const float RB=.62; // z kręgosłupa (tył klatki)
+const float RB=.62; // z of the spine (back of the ribcage)
 float ribOpen(){ return .75+.25*uVar.x+.06*KICK; }
 float rib(vec3 p,float id){
   float t=id/9.,op=ribOpen();
@@ -875,7 +875,7 @@ void main(){
   },
 
   // =====================================================================
-  // TŁO
+  // BACKDROP
   // =====================================================================
   {
     id: 'julia', name: 'Julia', layer: 'back', mood: 'both',
@@ -892,7 +892,7 @@ void main(){
   }
   vec3 col=uBg;
   if(n<63.){
-    // Gładkie liczenie iteracji; pasma rozchodzą się od zbioru w rytm beatu.
+    // Smooth iteration count; bands spread out from the set in time with the beat.
     float sm=n-log2(log2(dot(z,z)))+4.;
     float bands=.5+.5*sin(sm*.35-uBeats*PI*.5);
     col=mix(uC2,uC1,bands)*pow(clamp(sm/48.,0.,1.),.7)*(1.+.4*BASS+.3*KICK);
@@ -1108,50 +1108,50 @@ void main(){
   },
   {
     id: 'veins', name: 'Veins', layer: 'back', mood: 'calm',
-    // Sieć naczyń (grzbiety szumu), przez którą od "serca" płynie puls — ostre czoło, wygasający ogon.
-    // uVar: x = skala, y = ostrość naczyń, z = puls co 2 beaty / co beat, w = położenie serca (serce powoli wędruje).
+    // A vessel network (noise ridges) through which a pulse flows from the "heart" — sharp front, fading tail.
+    // uVar: x = scale, y = vessel sharpness, z = pulse every 2 beats / every beat, w = heart position (the heart slowly wanders).
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv()*(1.5+uVar.x);
   vec2 q=p+.3*vec2(fbm(p+uTime*.05),fbm(p-uTime*.04));
   float v=0.,a=.5;vec2 pp=q*2.;
   for(int i=0;i<4;i++){
-    v+=a*pow(1.-abs(noise(pp)*2.-1.),3.+uVar.y*6.); // "grzbiety" szumu = sieć naczyń
+    v+=a*pow(1.-abs(noise(pp)*2.-1.),3.+uVar.y*6.); // noise "ridges" = the vessel network
     pp=rot(.6)*pp*2.1+3.1;a*=.5;
   }
-  // Puls płynie naczyniami: "czas dotarcia" = odległość od serca, zakrzywiona tak jak naczynia.
-  // serce powoli wędruje po ekranie
+  // The pulse flows through the vessels: "arrival time" = distance from the heart, warped like the vessels.
+  // the heart slowly wanders across the screen
   vec2 heart=(uVar.w-.5)*vec2(.8,.4)+vec2(sin(uTime*.031)*.55,sin(uTime*.023+1.3)*.32);
   float T=length(q-heart)*1.6+.3*fbm(q*3.);
-  float rate=uVar.z<.5?.5:1.;            // puls co 2 beaty albo co beat
+  float rate=uVar.z<.5?.5:1.;            // a pulse every 2 beats or every beat
   float pulse=0.;
   for(int k=0;k<3;k++){
-    float age=fract(uBeats*rate)+float(k); // ile pulsów temu wyszedł z serca
-    float d=T-age*1.3/rate*.5;              // >0: przed czołem fali, <0: za nim
-    float wave=d>0.?exp(-d*d*180.):exp(d*4.); // ostre czoło, wygasający ogon
+    float age=fract(uBeats*rate)+float(k); // how many pulses ago it left the heart
+    float d=T-age*1.3/rate*.5;              // >0: ahead of the wave front, <0: behind it
+    float wave=d>0.?exp(-d*d*180.):exp(d*4.); // sharp front, fading tail
     pulse+=wave*exp(-age*.8)*(k==0?1.+1.2*KICK:1.);
   }
-  vec3 col=uC2*v*.3;                                   // spokojne, stałe naczynia
-  col+=mix(uC2,uC1,.75)*v*pulse*1.6;                   // fala w naczyniach
-  col+=uC1*pow(v,3.)*pulse*1.4;                        // jasny rdzeń grubszych naczyń
+  vec3 col=uC2*v*.3;                                   // calm, constant vessels
+  col+=mix(uC2,uC1,.75)*v*pulse*1.6;                   // the wave in the vessels
+  col+=uC1*pow(v,3.)*pulse*1.4;                        // bright core of the thicker vessels
   col*=.55+.5*uInt;
   fragColor=vec4(col,1.);
 }`,
   },
   {
     id: 'pond', name: 'Pond', layer: 'back', mood: 'calm',
-    // Spokojna, ciemna woda: co beat w losowym miejscu spada kropla (stopa = mocniejsza),
-    // powolna fala powierzchni rośnie z basem, tafla odbija "niebo" w kolorach palety.
-    // uVar: x = krople co beat / co 2 beaty, y = siła fali, z = szybkość kręgów, w = kierunek światła.
+    // Calm, dark water: every beat a drop falls at a random spot (the kick = a stronger one),
+    // a slow surface wave grows with the bass, the surface reflects a "sky" in palette colours.
+    // uVar: x = drops every beat / every 2 beats, y = wave strength, z = ring speed, w = light direction.
     frag: /* glsl */ `
 float pondH(vec2 p){
   float h=(sin(p.x*2.6+uTime*.35)*sin(p.y*2.1-uTime*.28)+.5*sin((p.x+p.y)*4.3-uTime*.5))
-          *(.15+.25*uVar.y)*(.5+BASS);    // powolna fala powierzchni
-  float rate=uVar.x<.5?1.:.5;               // krople co beat albo co 2 beaty
+          *(.15+.25*uVar.y)*(.5+BASS);    // slow surface wave
+  float rate=uVar.x<.5?1.:.5;               // drops every beat or every 2 beats
   float b=uBeats*rate;
   float spd=.18+.14*uVar.z;
   for(int k=0;k<5;k++){
-    float n=floor(b)-float(k);            // numer kropli
+    float n=floor(b)-float(k);            // drop number
     float age=fract(b)+float(k);
     vec2 pos=(vec2(hash(vec2(n,3.1)),hash(vec2(n,7.7)))-.5)*vec2(1.6,.9);
     float d=length(p-pos)-age*spd/rate;
@@ -1168,17 +1168,17 @@ void main(){
   float la=uVar.w*TAU;
   vec3 l=normalize(vec3(cos(la)*.5,sin(la)*.5,.75));
   float spec=pow(max(dot(reflect(-l,n),vec3(0.,0.,1.)),0.),48.);
-  // odbicie "nieba": nachylenie powierzchni przesuwa po gradiencie palety
+  // "sky" reflection: the surface slope shifts along the palette gradient
   float sky=clamp(.45+n.y*4.+n.x*1.5+p.y*.5,0.,1.);
   vec3 col=mix(uBg,mix(uC2,uC1,.3)*.75,sky*sky)+uC1*spec*(.6+.5*uInt);
   col*=1.-.5*smoothstep(.35,1.15,length(p));
   fragColor=vec4(col,1.);
 }`,
   },
-  // ---- tła organiczne (druga seria) ----
+  // ---- organic backdrops (second series) ----
   {
     id: 'plankton', name: 'Bioluminescence', layer: 'back', mood: 'calm',
-    // Drobny plankton dryfuje w ciemnej wodzie; fala rozbłysku przechodzi od środka co 2 beaty.
+    // Fine plankton drifts in dark water; a wave of light passes from the centre every 2 beats.
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv();
@@ -1193,7 +1193,7 @@ void main(){
     vec2 id=floor(q),f=fract(q)-.5;
     float h=hash(id+fi*3.);
     vec2 o=vec2(hash(id+11.),hash(id+23.))-.5;
-    vec2 cp=(id+.5+o*.6-drift-fi*17.)/sc;        // położenie drobinki na ekranie
+    vec2 cp=(id+.5+o*.6-drift-fi*17.)/sc;        // position of the particle on screen
     float wave=exp(-pow(length(cp)-R,2.)*50.)*(1.-ph);
     float dd=length(f-o*.6);
     float on=step(.45,h);
@@ -1205,8 +1205,8 @@ void main(){
   },
   {
     id: 'ink', name: 'Ink', layer: 'back', mood: 'calm',
-    // Tusz w wodzie jako bryła: gęstość tuszu = wysokość, z cieniowaniem i odbłyskiem (jak gruba,
-    // lśniąca smuga), plus druga, głębsza i ciemniejsza warstwa poruszająca się wolniej (paralaksa).
+    // Ink in water as a solid: ink density = height, with shading and highlights (like a thick,
+    // glossy streak), plus a second, deeper and darker layer moving slower (parallax).
     frag: /* glsl */ `
 float inkF(vec2 p,float t){
   vec2 q=p+vec2(fbm(p*1.5+t),fbm(p*1.5-t+4.));
@@ -1227,9 +1227,9 @@ void main(){
   vec2 p=cuv()*(1.+uVar.x);
   float t=uTime*.05;
   vec3 col=uBg;
-  // głębsza warstwa: większa skala, wolniejsza, przygaszona
+  // deeper layer: larger scale, slower, dimmed
   col+=inkLayer(p*.7+vec2(3.1,1.7),t*.6,uC2*.6)*.45;
-  // przednia warstwa przykrywa tylną tam, gdzie jest tusz
+  // the front layer covers the back one where there is ink
   vec3 front=inkLayer(p,t,mix(uC2,uC1,.25));
   float cover=smoothstep(.45,.6,inkF(p,t));
   col=mix(col,front,cover)+front*(1.-cover);
@@ -1239,7 +1239,7 @@ void main(){
   },
   {
     id: 'woodgrain', name: 'Wood grain', layer: 'back', mood: 'calm',
-    // Słoje drewna — falujące linie powoli płyną.
+    // Wood grain — undulating lines slowly flow.
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv();
@@ -1253,7 +1253,7 @@ void main(){
   },
   {
     id: 'leaf', name: 'Leaf', layer: 'back', mood: 'both',
-    // Liść z żyłkami (główna, boczne, siateczka); od ogonka do czubka przepływa puls.
+    // A leaf with veins (main, side, mesh); a pulse flows from the stalk to the tip.
     frag: /* glsl */ `
 float vor(vec2 p){
   vec2 i=floor(p),f=fract(p);float d1=8.,d2=8.;
@@ -1265,45 +1265,45 @@ float vor(vec2 p){
   return d2-d1;
 }
 void main(){
-  vec2 p=cuv()*2.1*rot(uTime*.07+uVar.w*TAU);    // liść powoli się obraca (pomniejszony, mieści się w każdej pozycji)
-  float inside=(p.x+1.)*(1.-p.x)*.42-abs(p.y);              // kształt liścia (>0 wewnątrz)
+  vec2 p=cuv()*2.1*rot(uTime*.07+uVar.w*TAU);    // the leaf slowly rotates (scaled down so it fits in any position)
+  float inside=(p.x+1.)*(1.-p.x)*.42-abs(p.y);              // leaf shape (>0 inside)
   float mid=1.-smoothstep(0.,.008*(1.1-p.x),abs(p.y));
   float sx=p.x-abs(p.y)*1.3,id=floor(sx/.17+.5);
   float side=1.-smoothstep(0.,.005*(1.-abs(p.y)*2.),abs(sx-id*.17));
   float net=1.-smoothstep(0.,.03,vor(p*14.));
   float veins=max(mid,side)+net*.35;
-  float T=(p.x+1.)*.55+abs(p.y)*.9;                        // czas dotarcia pulsu od ogonka
+  float T=(p.x+1.)*.55+abs(p.y)*.9;                        // pulse arrival time from the stalk
   float ph=fract(uBeats*.25);
   float pulse=exp(-pow(T-ph*1.4,2.)*70.)*(1.+KICK);
   float m=smoothstep(0.,.02,inside);
   vec3 col=uBg+m*(uC2*.14+veins*(uC2*.35+uC1*pulse));
-  col+=uC1*(1.-smoothstep(0.,.01,abs(inside)))*.25;        // obrys
+  col+=uC1*(1.-smoothstep(0.,.01,abs(inside)))*.25;        // outline
   fragColor=vec4(col*(.6+.5*uInt),1.);
 }`,
   },
   {
     id: 'mitosis', name: 'Mitosis', layer: 'back', mood: 'calm',
-    // Komórki pod mikroskopem. Wszystkie tworzą jedno wspólne pole (miękkie łączenie jak krople),
-    // więc stykające się komórki zlewają błony w jedną, a dzielące się — przewężają i rozrywają.
-    // Każda komórka płynie po własnym wektorze i dzieli się we własnym kierunku; rodzi się
-    // i znika przez rozmiar (rośnie z punktu, kurczy się do zera).
+    // Cells under a microscope. They all form one shared field (smooth union like droplets),
+    // so touching cells merge their membranes into one, and dividing ones pinch and split apart.
+    // Each cell drifts along its own vector and divides in its own direction; it is born
+    // and dies through size (grows from a point, shrinks to zero).
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv()*(2.6+uVar.x*1.5);
   vec2 i=floor(p);
   float field=9.,nuc=0.;
-  // zasięg komórki (ruch + podział + promień) < 1 kratki, więc wystarczy 9 sąsiednich komórek
+  // a cell's reach (motion + division + radius) < 1 grid cell, so 9 neighbouring cells are enough
   for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){
     vec2 g=i+vec2(x,y);
     float h=hash(g);
-    float ph=fract(uTime*.035+h);                              // faza cyklu 0..1
-    float life=smoothstep(0.,.18,ph)*(1.-smoothstep(.8,1.,ph));  // narodziny i zanik przez rozmiar
+    float ph=fract(uTime*.035+h);                              // cycle phase 0..1
+    float life=smoothstep(0.,.18,ph)*(1.-smoothstep(.8,1.,ph));  // birth and death through size
     if(life<.01) continue;
     vec2 c=g+.5+(vec2(hash(g+3.1),hash(g+7.3))-.5)*.35;
     float va=hash(g+11.9)*6.28;
-    c+=vec2(cos(va),sin(va))*(ph-.5)*(.25+.15*hash(g+5.5));     // własny wektor ruchu
+    c+=vec2(cos(va),sin(va))*(ph-.5)*(.25+.15*hash(g+5.5));     // own motion vector
     float da=hash(g+17.3)*6.28;
-    vec2 ax=vec2(cos(da),sin(da));                               // własny kierunek podziału
+    vec2 ax=vec2(cos(da),sin(da));                               // own division direction
     float sep=smoothstep(.4,.85,ph)*.3;
     float r=(.22+.05*smoothstep(0.,.4,ph)-.04*smoothstep(.4,.85,ph))*life;
     field=smin(field,length(p-c-ax*sep)-r,.16);
@@ -1312,34 +1312,34 @@ void main(){
     nuc+=life*(1.-smoothstep(0.,.075*life+.001,dn));
   }
   float mw=.025+.015*KICK;
-  float mem=1.-smoothstep(0.,mw,abs(field));                   // błona
-  float mem2=1.-smoothstep(0.,.02,abs(field+.06));              // wewnętrzna warstwa błony
+  float mem=1.-smoothstep(0.,mw,abs(field));                   // membrane
+  float mem2=1.-smoothstep(0.,.02,abs(field+.06));              // inner membrane layer
   float body=1.-smoothstep(-.02,0.,field);
-  float thick=clamp(-field*4.,0.,1.);                           // grubsze miejsca jaśniejsze
+  float thick=clamp(-field*4.,0.,1.);                           // thicker spots brighter
   vec2 tp=p*7.+vec2(uTime*.04,-uTime*.03);
-  float tex=.6*noise(tp)+.4*noise(tp*2.1+3.);                   // ziarnista cytoplazma
+  float tex=.6*noise(tp)+.4*noise(tp*2.1+3.);                   // grainy cytoplasm
   vec3 col=uBg;
   col+=body*uC2*(.1+.3*thick)*(.6+.8*tex);
   col+=uC1*mem*(.42+.3*BASS)+uC1*mem2*body*.12;
-  col+=uC1*exp(-max(field,0.)*22.)*.07;                         // poświata wokół błon
+  col+=uC1*exp(-max(field,0.)*22.)*.07;                         // glow around the membranes
   col+=mix(uC2,uC1,.45)*min(nuc,1.)*(.55+.5*KICK);
   fragColor=vec4(col*(.6+.5*uInt),1.);
 }`,
   },
-  // ---- tła: płyny ----
+  // ---- backdrops: liquids ----
   {
     id: 'cymatics', name: 'Cymatics', layer: 'back', mood: 'both',
-    // Wzory fal stojących na drgającej cieczy (figury Chladniego); kształt zmienia się
-    // z częstotliwościami, bas zagęszcza linie, stopa wprawia piasek w drganie.
+    // Standing-wave patterns on a vibrating liquid (Chladni figures); the shape changes
+    // with frequencies, bass makes the lines denser, the kick makes the sand vibrate.
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv()*1.6;
   float t=uTime*.08;
   float n=3.+uVar.x*4.+1.5*sin(t)+uMid*uReact*1.5;
   float m=2.+uVar.x*3.+1.2*cos(t*.7)+uHigh*uReact;
-  float sq=cos(n*PI*p.x)*cos(m*PI*p.y)-cos(m*PI*p.x)*cos(n*PI*p.y);   // płyta kwadratowa
+  float sq=cos(n*PI*p.x)*cos(m*PI*p.y)-cos(m*PI*p.x)*cos(n*PI*p.y);   // square plate
   float r=length(p),a=atan(p.y,p.x);
-  float ci=cos(n*2.2*r-t)*cos(floor(m+.5)*a);                           // płyta okrągła
+  float ci=cos(n*2.2*r-t)*cos(floor(m+.5)*a);                           // round plate
   float u=mix(sq,ci,uVar.y);
   float line=exp(-abs(u)*(14.+10.*BASS));
   float grain=hash(floor(gl_FragCoord.xy/1.5)+floor(uTime*20.));
@@ -1350,7 +1350,7 @@ void main(){
   },
   {
     id: 'caustics', name: 'Caustics', layer: 'back', mood: 'calm',
-    // Świetlne wzory jak na dnie basenu; stopa lekko je rozjaśnia.
+    // Light patterns like on the bottom of a pool; the kick brightens them slightly.
     frag: /* glsl */ `
 float caustic(vec2 uv,float t){
   vec2 p=mod(uv*TAU,TAU)-250.,i=p;
@@ -1374,7 +1374,7 @@ void main(){
   },
   {
     id: 'marbling', name: 'Marbling', layer: 'back', mood: 'calm',
-    // Farby na wodzie (ebru): pasma koloru przeczesywane grzebieniem; stopa mocniej czesze.
+    // Paint on water (ebru): bands of colour combed through; the kick combs harder.
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv()*(1.2+uVar.x);
@@ -1393,13 +1393,13 @@ void main(){
   },
   {
     id: 'oil', name: 'Oil slick', layer: 'back', mood: 'calm',
-    // Opalizujące smugi cienkiej warstwy oleju na ciemnej wodzie, w kolorach palety.
+    // Iridescent streaks of a thin oil film on dark water, in palette colours.
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv()*(1.+uVar.x);
   float t=uTime*.04;
   vec2 q=p+.5*vec2(fbm(p+t),fbm(p-t+3.));
-  float th=fbm(q*1.5+vec2(t,-t))*2.+.3*BASS;            // grubość warstwy oleju
+  float th=fbm(q*1.5+vec2(t,-t))*2.+.3*BASS;            // oil film thickness
   float mask=smoothstep(.35,.6,fbm(q*.8+7.));
   float k=14.+uVar.y*8.;
   vec3 irid=uC1*(.5+.5*cos(th*k))+uC2*(.5+.5*cos(th*k+2.1))+mix(uC1,vec3(1.),.5)*.35*(.5+.5*cos(th*k+4.2));
@@ -1407,16 +1407,16 @@ void main(){
   fragColor=vec4(col*(.6+.5*uInt),1.);
 }`,
   },
-  // ---- tła: symulacje (stan żyje między klatkami — liczone w js/sim.js) ----
+  // ---- backdrops: simulations (state lives between frames — computed in js/sim.js) ----
   {
     id: 'fluidsim', name: 'Fluid', layer: 'back', mood: 'both', sim: 'fluid', frag: '',
-    // Prawdziwa symulacja płynu: stopa wstrzykuje barwne wiry, bas stale delikatnie miesza.
-    // uVar: x = wielkość wirów, y = siła wstrzyknięcia, z = zawirowania, w = jak szybko barwnik gaśnie.
+    // A real fluid simulation: the kick injects coloured swirls, bass keeps gently stirring.
+    // uVar: x = swirl size, y = injection force, z = vorticity, w = how fast the dye fades.
   },
   {
     id: 'rdsim', name: 'Reaction-diffusion', layer: 'back', mood: 'calm', sim: 'rd', frag: '',
-    // Wzory Turinga (Gray-Scott) rosną na żywo; stopa zasiewa nowe plamy.
-    // uVar: x = rodzaj wzoru (koral / plamy / robaki / komórki), y = tempo wzrostu.
+    // Turing patterns (Gray-Scott) grow live; the kick seeds new spots.
+    // uVar: x = pattern type (coral / spots / worms / cells), y = growth rate.
   },
 ];
 

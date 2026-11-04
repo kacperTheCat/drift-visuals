@@ -28,7 +28,7 @@ button.on kbd { color: #000; border-color: rgba(0,0,0,.3); }
 
 .app { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; }
 
-/* --- górny pasek --- */
+/* --- top bar --- */
 .top {
   display: flex; align-items: center; gap: 10px; padding: 8px 12px;
   border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: nowrap; min-width: 0;
@@ -40,7 +40,7 @@ button.on kbd { color: #000; border-color: rgba(0,0,0,.3); }
 #srcStatus, #midiStatus { flex: none; }
 @media (max-width: 1500px) { .brand span { display: none; } }
 .source select { width: 160px; text-overflow: ellipsis; }
-/* stała szerokość statusów — zmiana tekstu nie przesuwa reszty paska */
+/* fixed width for status fields — text changes do not shift the rest of the bar */
 #srcStatus { width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .bpm { display: flex; align-items: baseline; }
 .bpm input {
@@ -71,7 +71,7 @@ button.on kbd { color: #000; border-color: rgba(0,0,0,.3); }
 }
 .state.bd { color: #000; background: var(--muted); }
 
-/* --- układ: 3 kolumny (na żywo | głębia | tło), każda przewija się osobno --- */
+/* --- layout: 3 columns (live | depth | backdrop), each scrolls on its own --- */
 main {
   display: grid; grid-template-columns: minmax(360px, 1.25fr) minmax(280px, 1fr) minmax(260px, 1fr);
   min-height: 0;
@@ -117,7 +117,7 @@ button.wide { width: 100%; margin-top: 8px; padding: 6px; }
 .xf { display: flex; align-items: center; gap: 8px; font: 700 10px ui-monospace, Menlo, monospace; color: var(--muted); }
 .xf input { flex: 1; }
 
-/* sceny: 3 w rzędzie, nastrój jako kolorowy pasek po lewej */
+/* scenes: 3 per row, mood as a coloured stripe on the left */
 .scenes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
 .scene {
   display: flex; align-items: center; gap: 4px; text-align: left; padding: 5px 5px 5px 7px;
@@ -135,7 +135,7 @@ button.wide { width: 100%; margin-top: 8px; padding: 6px; }
 .scene.leaving { opacity: .6; }
 .scene.broken { border-color: #a33; }
 
-/* palety: jeden rząd małych próbek, nazwa w dymku */
+/* palettes: one row of small swatches, name in the tooltip */
 .pals { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; flex: 1; }
 .pal { height: 22px; padding: 0; border: 2px solid transparent; }
 .pal span { display: none; }
@@ -166,13 +166,13 @@ body.showkeys footer { display: flex; }
 .chips button { padding: 3px 7px; font-size: 11px; border-radius: 12px; }
 .chips.quality { margin-top: 10px; padding: 8px 0 2px; border-top: 1px solid var(--line); }
 
-/* program dropu: 4 listy w siatce 2×2, zaprogramowane pole podświetlone */
+/* drop program: 4 lists in a 2×2 grid, programmed field highlighted */
 .dropprog { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; margin-top: 6px; }
 .dropprog label { display: grid; grid-template-columns: 74px 1fr; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
 .dropprog select { width: 100%; min-width: 0; padding: 3px 4px; font-size: 11px; }
 .dropprog select.prog { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); color: var(--text); }
 
-/* licznik FPS w rogu podglądu */
+/* FPS counter in the corner of the preview */
 .fps {
   position: absolute; right: 8px; top: 6px; font: 600 11px ui-monospace, Menlo, monospace;
   padding: 1px 6px; border-radius: 4px; background: rgba(0,0,0,.55); pointer-events: none; color: #7ee787;
@@ -180,7 +180,7 @@ body.showkeys footer { display: flex; }
 .fps.mid { color: #e3b341; }
 .fps.low { color: #ff7b72; }
 body.bare .fps { display: none; }
-/* podgląd zostaje na widoku, gdy lewa kolumna się przewija */
+/* the preview stays in view while the left column scrolls */
 .col-live .stage { position: sticky; top: 0; z-index: 3; }
 
 /* --- MIDI --- */
@@ -198,7 +198,7 @@ body.midi-learn [data-midi-label]::after {
 }
 button.danger { color: #ff8a80; }
 
-/* --- okno mapowania MIDI --- */
+/* --- MIDI mapping window --- */
 .modal { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.6); display: grid; place-items: center; padding: 16px; }
 .modal[hidden] { display: none; }
 .modal-box {
@@ -222,25 +222,25 @@ table.mm tr.warn td:nth-child(5) { color: #ff8a80; }
 .mm-res { color: var(--muted); font-size: 11px; white-space: nowrap; }
 .mm-none td { color: var(--muted); text-align: center; padding: 16px; }
 
-/* --- tryb bez panelu / okno wyjścia: sam obraz na cały ekran --- */
+/* --- bare mode / output window: just the image, fullscreen --- */
 body.bare .top, body.bare .col > section:not(.stage), body.bare aside, body.bare footer, body.bare .overlay { display: none; }
 body.bare .stage { position: fixed; inset: 0; aspect-ratio: auto; z-index: 5; }
 body.nocursor { cursor: none; }
 
-/* górny pasek mieści się w jednym rzędzie od ~1290 px; węziej grupy zawijają się do kolejnych rzędów,
-   zamiast się ściskać i nachodzić na siebie */
+/* the top bar fits in one row from ~1290 px; narrower, the groups wrap onto further rows
+   instead of squeezing and overlapping */
 @media (max-width: 1290px) {
   .top { flex-wrap: wrap; row-gap: 6px; }
   .top > * { flex-shrink: 0; }
 }
 
-/* niskie ekrany (np. 1280×720): sceny w 4 kolumnach, żeby kolumny mieściły się bez przewijania */
+/* short screens (e.g. 1280×720): scenes in 4 columns so the columns fit without scrolling */
 @media (max-height: 800px) and (min-width: 1101px) {
   .col .scenes { grid-template-columns: repeat(4, 1fr); gap: 3px; }
   .col .scene { font-size: 11px; padding: 4px 4px 4px 6px; }
 }
 
-/* węższe ekrany: podgląd + na żywo u góry, głębia i tło obok siebie niżej */
+/* narrower screens: preview + live controls on top, depth and backdrop side by side below */
 @media (max-width: 1100px) {
   main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-auto-rows: max-content; overflow-y: auto; }
   .col-live { grid-column: 1 / -1; display: grid; grid-template-columns: 1.3fr 1fr; }

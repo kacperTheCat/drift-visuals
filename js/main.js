@@ -16,7 +16,7 @@ function fatal(msg) {
   h.textContent = msg;
 }
 
-// Licznik klatek: wygładzony czas między klatkami (ms) -> FPS.
+// Frame counter: smoothed time between frames (ms) -> FPS.
 class FpsMeter {
   constructor() {
     this.dt = 1000 / 60;
@@ -40,8 +40,8 @@ if (isOutput) runOutput();
 else runControl();
 
 // ---------------------------------------------------------------------------
-// Okno wyjścia (projektor): tylko renderuje. Stan i audio żyją w panelu (window.opener),
-// ale to TO okno napędza pętlę — więc zasłonięty panel nie spowalnia wizualizacji.
+// Output window (projector): only renders. State and audio live in the panel (window.opener),
+// but THIS window drives the loop — so a covered panel does not slow the visuals down.
 function runOutput() {
   document.body.classList.add('bare', 'output');
   document.title = 'DRIFT — output';
@@ -103,8 +103,8 @@ function runControl() {
   const brokenScenes = Object.keys(engine.errors);
 
   let outWin = null;
-  // Układ ekranów (Window Management API w Chrome): okno wyjścia otwiera się od razu
-  // na drugim ekranie (projektorze). Za pierwszym razem Chrome pyta o zgodę.
+  // Screen layout (Window Management API in Chrome): the output window opens directly
+  // on the second screen (projector). The first time, Chrome asks for permission.
   let screens = null;
   const loadScreens = async () => {
     try {
@@ -128,7 +128,7 @@ function runControl() {
       : 'width=1280,height=720';
     outWin = window.open('?output=1', 'drift-output', `popup,${place}`);
     d.log(ext ? `Output window on screen: ${ext.label || 'second screen'}` : 'Output window open');
-    // Zgodę prosimy dopiero po otwarciu okna, żeby przeglądarka nie zablokowała popupu.
+    // Permission is requested only after the window opens, so the browser does not block the popup.
     if (!screens && 'getScreenDetails' in window) loadScreens();
   };
   const hide = () => document.body.classList.toggle('bare');
@@ -145,7 +145,7 @@ function runControl() {
   bindKeys(window, () => d, { fullscreen: full, hide, output: openOutput });
   document.addEventListener('pointerdown', () => d.audio.resume());
 
-  // --- źródło dźwięku ---
+  // --- audio source ---
   const sel = $('device');
   async function refreshDevices() {
     let list = [];
@@ -154,7 +154,7 @@ function runControl() {
     } catch {}
     sel.innerHTML = '';
     sel.append(new Option('Demo — no sound (BPM clock)', 'demo'));
-    // Bez zgody na mikrofon przeglądarka nie podaje nazw urządzeń — wybór pozycji poprosi o zgodę.
+    // Without microphone permission the browser hides device names — picking an entry asks for it.
     list.forEach((dev, i) =>
       sel.append(new Option(dev.label || `Microphone / audio input ${list.length > 1 ? i + 1 : ''} (asks for permission)`, dev.deviceId)),
     );
@@ -168,15 +168,15 @@ function runControl() {
   navigator.mediaDevices?.addEventListener?.('devicechange', refreshDevices);
   refreshDevices();
 
-  // Wybór z listy od razu przełącza źródło (to też "akcja użytkownika", więc przeglądarka
-  // pozwala uruchomić dźwięk i zapytać o mikrofon).
+  // Picking from the list switches the source right away (this also counts as a "user action", so the browser
+  // allows starting audio and asking for the microphone).
   sel.addEventListener('change', async () => {
     const v = sel.value;
     sel.blur();
     if (v === '__playing') return;
     if (v === '__file') {
       $('file').click();
-      refreshDevices(); // lista wraca do bieżącego źródła, dopóki nie wybierzesz pliku
+      refreshDevices(); // the list goes back to the current source until you pick a file
       return;
     }
     if (v === 'demo') d.useDemo();
@@ -195,7 +195,7 @@ function runControl() {
     e.target.value = '';
     refreshDevices();
   });
-  // Ostatnio używane wejście — spróbuj podłączyć od razu (uprawnienie jest zapamiętane dla localhost).
+  // Last used input — try to connect right away (permission is remembered for localhost).
   if (d.s.deviceId) d.useInput(d.s.deviceId).then(refreshDevices).catch(() => {});
 
   // --- tempo ---
@@ -212,7 +212,7 @@ function runControl() {
   $('sync').addEventListener('click', () => d.syncPhrase());
   $('bpmAuto').addEventListener('click', () => d.set('bpmAuto', !d.s.bpmAuto));
 
-  // --- sceny ---
+  // --- scenes ---
   const sceneBtns = {};
   const MOOD = { drive: 'groove', calm: 'breakdown', both: 'both' };
   const addSceneBtn = (sc, i, box, onPick) => {
@@ -237,7 +237,7 @@ function runControl() {
   $('aDepth').addEventListener('click', () => d.toggleDepth());
   $('autoBack').addEventListener('change', (e) => d.set('autoBack', e.target.checked));
 
-  // --- warstwy ---
+  // --- layers ---
   const bal = $('balance');
   bal.addEventListener('input', () => d.setBalance(bal.value / 1000));
   bal.addEventListener('dblclick', () => d.setBalance(0.5));
@@ -246,7 +246,7 @@ function runControl() {
   $('qFxaa').addEventListener('click', () => d.set('fxaa', !d.s.fxaa));
   $('qHiRes').addEventListener('click', () => d.set('hiRes', !d.s.hiRes));
 
-  // --- palety ---
+  // --- palettes ---
   const palRow = (box, layer) =>
     PALETTES.map((p, i) => {
       const b = document.createElement('button');
@@ -262,7 +262,7 @@ function runControl() {
   const palBackBtns = palRow('palsBack', 'back');
   $('linkPal').addEventListener('change', (e) => d.set('linkPalettes', e.target.checked));
 
-  // --- segmenty / suwaki / akcje ---
+  // --- segments / sliders / actions ---
   const segs = [
     ['phrase', (v) => +v],
     ['trans', (v) => v, 'transition'],
@@ -286,7 +286,7 @@ function runControl() {
   $('aVary').addEventListener('click', () => d.vary());
   $('aVaryBack').addEventListener('click', () => d.vary(1, 'back'));
   $('aFlash').addEventListener('click', () => d.hit());
-  // Strobo i Glitch działają, póki trzymasz przycisk.
+  // Strobe and Glitch are active while the button is held.
   const holdBtn = (el, prop) => {
     el.addEventListener('pointerdown', () => (d[prop] = true));
     for (const ev of ['pointerup', 'pointerleave']) el.addEventListener(ev, () => (d[prop] = false));
@@ -306,7 +306,7 @@ function runControl() {
   });
   $('shortcuts').innerHTML = SHORTCUTS.map(([k, v]) => `<span><kbd>${k}</kbd> ${v}</span>`).join('');
 
-  // --- ręczny drop ---
+  // --- manual drop ---
   $('dropIn').addEventListener('click', (e) => {
     const v = e.target.closest('button')?.dataset.v;
     if (v) d.armDrop(+v);
@@ -317,7 +317,7 @@ function runControl() {
       if (v) d.toggleDropOpt(group, v);
     });
 
-  // --- program dropu: co wejdzie w momencie dropu ---
+  // --- drop program: what comes in on the drop ---
   const opt = (v, t) => `<option value="${v}">${t}</option>`;
   const progSel = {
     scene: [$('dpScene'), opt(RANDOM, '🎲 random') + DEPTH.map((s) => opt(s.id, s.name)).join('')],
@@ -332,7 +332,7 @@ function runControl() {
       el.blur();
     });
   }
-  // Pole bez programu pokazuje to, co gra teraz; zaprogramowane — wybraną wartość (podświetlone).
+  // A field without a program shows what is playing now; a programmed one shows the chosen value (highlighted).
   function updateDropProg() {
     const current = { scene: d.dp.cur.id, back: d.bk.cur.id, pal: d.s.palette, palBack: d.backPaletteIndex };
     for (const [key, [el]] of Object.entries(progSel)) {
@@ -344,7 +344,7 @@ function runControl() {
     }
   }
 
-  // --- dodatkowe akcje MIDI (widoczne w trybie learn) ---
+  // --- extra MIDI actions (visible in learn mode) ---
   $('mPrevScene').addEventListener('click', () => d.stepScene(-1));
   $('mNextScene').addEventListener('click', () => d.stepScene(1));
   $('mPrevBack').addEventListener('click', () => d.stepScene(-1, 'back'));
@@ -353,7 +353,7 @@ function runControl() {
   $('mBalCenter').addEventListener('click', () => d.setBalance(0.5));
   $('mNextPal').addEventListener('click', () => d.nextPalette(1, 'depth'));
   $('mNextPalBack').addEventListener('click', () => d.nextPalette(1, 'back'));
-  // Gałka przewija listę scen — zmiana tylko, gdy wskazuje inną scenę.
+  // The knob scrolls through the scene list — changes only when it points at a different scene.
   const knob = (id, list, apply) =>
     $(id).addEventListener('input', (e) => {
       const sc = list[Math.min(list.length - 1, Math.floor((e.target.value / 128) * list.length))];
@@ -362,7 +362,7 @@ function runControl() {
   knob('mSceneKnob', DEPTH, (id) => id !== d.current && d.setScene(id));
   knob('mBackKnob', BACK, (id) => id !== d.bk.cur.id && d.setBack(id));
 
-  // --- MIDI: oznacz elementy, które można przypisać ---
+  // --- MIDI: tag the elements that can be assigned ---
   const tag = (el, key) => el && !el.dataset.midi && (el.dataset.midi = key);
   for (const [id, b] of Object.entries(sceneBtns)) tag(b, `scene:${id}`);
   palBtns.forEach((b, i) => tag(b, `pal:depth:${i}`));
@@ -409,11 +409,11 @@ function runControl() {
     }
   });
 
-  // --- okno mapowania MIDI: lista przypisań, podgląd na żywo, wybór akcji i trybu gałki ---
+  // --- MIDI mapping window: list of assignments, live preview, action and knob-mode selection ---
   const mm = $('midiMap');
   const mmBody = $('mmBody');
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-  let rows = {}; // klucz przypisania -> wiersz tabeli
+  let rows = {}; // assignment key -> table row
   const targetOptions = () => {
     const groups = {};
     for (const t of midi.targets()) (groups[t.group] ??= []).push(t);
@@ -523,7 +523,7 @@ function runControl() {
   });
   let uiFrame = 0;
 
-  // --- odświeżanie panelu ---
+  // --- panel refresh ---
   const dots = [...$('dots').children];
   const meters = { mSub: 'sub', mLow: 'low', mMid: 'mid', mHigh: 'high', mEnergy: 'energy' };
   const name = (id) => SCENES.find((s) => s.id === id)?.name || id;
@@ -557,7 +557,7 @@ function runControl() {
   function updateUI(f) {
     updateDrop(f);
     updateDropProg();
-    if (midi.access && ++uiFrame % 30 === 0) midi.status(); // odświeża m.in. wskaźnik CLOCK
+    if (midi.access && ++uiFrame % 30 === 0) midi.status(); // refreshes e.g. the CLOCK indicator
     if (document.activeElement !== bpmIn) bpmIn.value = d.clock.bpm.toFixed(1);
     const beat = Math.floor(f.beats) % 4;
     dots.forEach((el, i) => el.classList.toggle('on', i === beat));
@@ -571,7 +571,7 @@ function runControl() {
     if (d.source === 'demo') Object.assign(vals, { sub: d.demo.out.sub, low: d.demo.out.low });
     for (const [id, k] of Object.entries(meters)) $(id).style.transform = `scaleY(${Math.min(1, vals[k]).toFixed(3)})`;
     $('kick').style.opacity = (0.15 + 0.85 * f.kick).toFixed(2);
-    // IN: poziom sygnału po wzmocnieniu; -90 dB = pusto, -40 dB = pełno (głośna muzyka z linii ≈ -50)
+    // IN: signal level after gain; -90 dB = empty, -40 dB = full (loud music from a line input ≈ -50)
     const lvl = d.source === 'demo' ? 0 : Math.max(0, Math.min(1, (d.level + 90) / 50));
     $('mIn').style.transform = `scaleY(${lvl.toFixed(3)})`;
     if (document.activeElement !== $('inputGain')) $('inputGain').value = d.s.inputGain;
@@ -600,7 +600,7 @@ function runControl() {
     $('aShatter').classList.toggle('on', d.shatterOn);
     $('qFxaa').classList.toggle('on', d.s.fxaa);
     $('qHiRes').classList.toggle('on', d.s.hiRes);
-    // Wariacja wyszarzona, gdy nic by nie zmieniła (scena bez wariacji albo warstwa niewidoczna).
+    // Variation greyed out when it would change nothing (scene without variations or layer not visible).
     for (const [id, layer, key] of [['aVary', 'depth', 'V'], ['aVaryBack', 'back', '⇧V']]) {
       const why = varyBlocked(d, layer);
       const el = $(id);
@@ -653,7 +653,7 @@ function runControl() {
   let fpsShown = 0;
   function updateFps(now) {
     meter.tick(now);
-    if (now - fpsShown < 500) return; // odświeżanie 2× na sekundę, żeby dało się przeczytać
+    if (now - fpsShown < 500) return; // refresh twice a second so it is readable
     fpsShown = now;
     const out = d.outFps && Date.now() - d.outFps.at < 1500 ? d.outFps : null;
     const m = out || { fps: meter.fps, ms: meter.dt };
@@ -665,7 +665,7 @@ function runControl() {
   function loop() {
     updateFps(performance.now());
     const f = d.tick();
-    // Gdy okno wyjścia jest otwarte, podgląd renderujemy w niższej rozdzielczości.
+    // While the output window is open, the preview renders at a lower resolution.
     engine.scale = outWin && !outWin.closed ? 0.5 : 1;
     engine.render(f);
     updateUI(f);

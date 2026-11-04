@@ -1,4 +1,4 @@
-// Renderer WebGL2: głębia (z przejściem scen i smugami) + tło (z przejściem) -> nakładanie warstw -> ekran.
+// WebGL2 renderer: depth (with scene transition and trails) + backdrop (with transition) -> layer blending -> screen.
 import { SCENES, sceneSource } from './scenes.js';
 import { createSim } from './sim.js';
 
@@ -8,14 +8,14 @@ const VERT = `#version 300 es
 in vec2 aPos; out vec2 vUv;
 void main(){ vUv=aPos*.5+.5; gl_Position=vec4(aPos,0.,1.); }`;
 
-// Przebieg 1: głębia (przejście A→B) + smugi (feedback) — tylko warstwa głębi, tło zostaje ostre.
+// Pass 1: depth (A→B transition) + trails (feedback) — depth layer only, the backdrop stays sharp.
 const COMPOSITE = `#version 300 es
 precision highp float;
 in vec2 vUv; out vec4 fragColor;
 uniform sampler2D uA, uB, uPrev;
 uniform float uMix, uFeedback, uZoom, uTwist;
 void main(){
-  // Kolor premultiplied + alfa (ile głębia zasłania tło).
+  // Premultiplied colour + alpha (how much the depth covers the backdrop).
   vec4 D=mix(texture(uA,vUv), texture(uB,vUv), uMix);
   float cs=cos(uTwist), sn=sin(uTwist);
   vec2 q=mat2(cs,-sn,sn,cs)*(vUv-.5)*(1.-uZoom)+.5;
@@ -23,26 +23,26 @@ void main(){
   fragColor=max(D, prev*uFeedback-.004);
 }`;
 
-// Przebieg 2: nakładanie głębi na tło + winieta, ziarno, flash, blackout.
+// Pass 2: blending depth over the backdrop + vignette, grain, flash, blackout.
 const PRESENT = `#version 300 es
 precision highp float;
 in vec2 vUv; out vec4 fragColor;
 uniform sampler2D uD, uK0, uK1;
 uniform float uBackMix, uBackLevel, uBal;
-uniform int uMode; // 0 normalny, 1 światło (screen), 2 maska, 3 różnica
+uniform int uMode; // 0 normal, 1 light (screen), 2 mask, 3 difference
 uniform float uTime, uFlash, uBlack, uGrain;
-uniform float uGlitch, uGSeed; // siła glitcha 0..1, ziarno zmieniane w rytm (co ósemkę)
-uniform float uShatter, uShSeed, uAspect; // rozpad: postęp 0..1, wzór pęknięć, proporcje ekranu
-uniform float uFxaa; uniform vec2 uDTexel; // wygładzanie krawędzi głębi (FXAA), rozmiar teksela
+uniform float uGlitch, uGSeed; // glitch strength 0..1, seed changed in rhythm (every eighth note)
+uniform float uShatter, uShSeed, uAspect; // shatter: progress 0..1, crack pattern, screen aspect
+uniform float uFxaa; uniform vec2 uDTexel; // depth edge smoothing (FXAA), texel size
 uniform vec3 uFlashCol;
 float lum(vec3 c){ return dot(c, vec3(.299,.587,.114)); }
 float h1(float n){ return fract(sin(n*127.1)*43758.5453); }
 vec2 h2(vec2 p){ return fract(sin(vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))))*43758.5453); }
 
-// ---- Rozpad: obraz pęka na odłamki (komórki Voronoi), które się obracają, opadają i gasną ----
-const float SH_N=5.; // ile odłamków na wysokość ekranu
+// ---- Shatter: the image cracks into shards (Voronoi cells) that rotate, fall and fade ----
+const float SH_N=5.; // how many shards across the screen height
 vec2 shSeed(vec2 c){ return c+.15+.7*h2(c+uShSeed); }
-// najbliższa komórka dla punktu q (w jednostkach siatki) + odległość od krawędzi komórki
+// nearest cell for point q (in grid units) + distance from the cell edge
 vec3 shCell(vec2 q){
   vec2 i=floor(q), best=i; float d1=9., d2=9.;
   for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){
@@ -52,16 +52,16 @@ vec3 shCell(vec2 q){
   }
   return vec3(best,(d2-d1)*.5);
 }
-// stan odłamka c: postęp własny (z opóźnieniem), przesunięcie, obrót, jasność
+// state of shard c: own progress (delayed), offset, rotation, brightness
 void shState(vec2 c, out float lp, out vec2 off, out float ang){
   vec2 r=h2(c*1.7+uShSeed+3.);
-  float t0=.1+.45*r.x; // odłamki odpadają po kolei
+  float t0=.1+.45*r.x; // shards fall off one by one
   lp=clamp((uShatter-t0)/(1.-t0*.6),0.,1.);
-  off=vec2((r.y-.5)*.8*lp, -2.6*lp*lp); // lekko w bok i coraz szybciej w dół
+  off=vec2((r.y-.5)*.8*lp, -2.6*lp*lp); // slightly sideways and faster and faster downwards
   ang=(r.x-.5)*1.6*lp;
 }
-// Tło pod odłamkami: delikatny szum (ziarno jak w starym telewizorze), zmieniany 24 razy
-// na sekundę, z wolnymi pasmami jasności, w stonowanym kolorze akcentu.
+// Background under the shards: subtle noise (grain like an old TV), changing 24 times
+// a second, with slow brightness bands, in a muted accent colour.
 vec3 abyss(vec2 uv){
   vec2 cell=floor(gl_FragCoord.xy/1.5)+fract(floor(uTime*24.)*.1234)*137.;
   float st=fract(sin(dot(cell,vec2(12.9898,78.233)))*43758.5453);
@@ -70,12 +70,12 @@ vec3 abyss(vec2 uv){
   return tint*st*.11*band*smoothstep(.04,.3,uShatter);
 }
 
-// Zwraca współrzędne źródłowe (xy) i jasność odłamka (z); z<0 = szczelina / pusto. w = bliskość rysy.
+// Returns source coordinates (xy) and shard brightness (z); z<0 = gap / empty. w = proximity to a crack.
 vec4 shatter(vec2 uv){
   vec2 p=vec2(uv.x*uAspect,uv.y)*SH_N;
   vec2 i=floor(p);
   float gap=.035*smoothstep(.05,.25,uShatter);
-  for(int y=-1;y<=3;y++) for(int x=-1;x<=1;x++){ // odłamki z góry mogą spaść w to miejsce
+  for(int y=-1;y<=3;y++) for(int x=-1;x<=1;x++){ // shards from above can fall into this spot
     vec2 c=i+vec2(x,y);
     float lp,ang; vec2 off;
     shState(c,lp,off,ang);
@@ -93,8 +93,8 @@ vec4 shatter(vec2 uv){
   return vec4(uv,-1.,0.);
 }
 
-// FXAA (wersja uproszczona): wygładza schodki na krawędziach — szuka kierunku krawędzi
-// z jasności sąsiadów i uśrednia wzdłuż niej. Płaskie obszary zostają nietknięte.
+// FXAA (simplified): smooths jagged edges — finds the edge direction
+// from neighbour luminance and averages along it. Flat areas stay untouched.
 vec4 fxaaD(vec2 uv){
   vec2 px=uDTexel;
   vec4 c=texture(uD,uv);
@@ -103,7 +103,7 @@ vec4 fxaaD(vec2 uv){
   float lSW=lum(texture(uD,uv+vec2(-1.,1.)*px).rgb), lSE=lum(texture(uD,uv+vec2(1.,1.)*px).rgb);
   float lMin=min(lM,min(min(lNW,lNE),min(lSW,lSE)));
   float lMax=max(lM,max(max(lNW,lNE),max(lSW,lSE)));
-  if(lMax-lMin<max(.02,lMax*.1)) return c; // brak krawędzi
+  if(lMax-lMin<max(.02,lMax*.1)) return c; // no edge
   vec2 dir=vec2(-((lNW+lNE)-(lSW+lSE)),(lNW+lSW)-(lNE+lSE));
   float red=max((lNW+lNE+lSW+lSE)*.03125,1./128.);
   dir=clamp(dir/(min(abs(dir.x),abs(dir.y))+red),-8.,8.)*px;
@@ -113,16 +113,16 @@ vec4 fxaaD(vec2 uv){
   return (lB<lMin||lB>lMax)?a:b;
 }
 
-// Nakładanie głębi na tło w danym punkcie.
+// Blending depth over the backdrop at a given point.
 vec3 layers(vec2 uv){
   vec4 d=uFxaa>.5?fxaaD(uv):texture(uD,uv);
   vec3 D=d.rgb; float Da=d.a;
   vec3 K=mix(texture(uK1,uv).rgb, texture(uK0,uv).rgb, uBackMix)*uBackLevel;
-  // Balans: 0 = samo tło, 0.5 = oba plany w pełni, 1 = sama głębia.
+  // Balance: 0 = backdrop only, 0.5 = both layers at full, 1 = depth only.
   float gd=min(1.,2.*uBal), gk=min(1.,2.*(1.-uBal));
   if(uMode==1) return 1.-(1.-D*gd)*(1.-K*gk);
   if(uMode==2){
-    // Tło widoczne tylko w kształtach głębi, cieniowane jej jasnością.
+    // Backdrop visible only inside the depth shapes, shaded by its brightness.
     float m=smoothstep(.02,.4,max(Da,lum(D)));
     vec3 masked=K*m*(.6+.8*lum(D))/max(uBackLevel,.2);
     return mix(mix(K,masked,smoothstep(0.,.5,uBal)),D,smoothstep(.5,1.,uBal));
@@ -142,25 +142,25 @@ void main(){
   if(shFade<0.) c=abyss(vUv);
   else if(uGlitch>.001){
     float g=uGlitch, sd=uGSeed;
-    // poziome pasy przesunięte w bok
+    // horizontal bands shifted sideways
     float row=floor(uv.y*(6.+30.*h1(sd)));
     float r=h1(row*1.37+sd*13.1);
     uv.x+=step(1.-.55*g,r)*(h1(row*7.3+sd)-.5)*.3*g;
-    // przeskakujące bloki
+    // jumping blocks
     vec2 blk=floor(vUv*vec2(12.,7.)+h1(sd*3.1)*4.);
     float b=h1(blk.x*3.7+blk.y*57.1+sd*9.3);
     if(b>1.-.3*g) uv+=(vec2(h1(b*91.),h1(b*37.))-.5)*.12*g;
     uv=clamp(uv,0.,1.);
-    // rozszczepienie RGB
+    // RGB split
     vec2 off=vec2(.004+.018*g*h1(sd*5.7),0.);
     c=vec3(layers(uv-off).r, layers(uv).g, layers(uv+off).b);
-    // zakłócenia linii i krótkie odwrócenie kolorów
+    // line interference and a brief colour inversion
     c+=(h1(floor(gl_FragCoord.y/3.)+sd*17.)-.5)*.18*g;
     if(h1(sd*2.3)>.85) c=mix(c,1.-c,.8*g);
   } else c=layers(uv);
   if(shFade>=0.){
-    // świecące rysy na początku pękania; potem krawędzie odłamków lekko świecą,
-    // a odłamki gasną w otchłań
+    // glowing cracks at the start of the break; then the shard edges glow softly,
+    // and the shards fade into the abyss
     float glowCrack=shCrack*smoothstep(0.,.06,uShatter)*(1.-smoothstep(.25,.6,uShatter));
     float rim=shCrack*smoothstep(.2,.5,uShatter)*.25*shFade;
     if(uShatter>.001) c=mix(abyss(vUv),c,shFade);
@@ -179,7 +179,7 @@ export class Engine {
   constructor(canvas, { scale = 1, maxDpr = 1.5 } = {}) {
     this.canvas = canvas;
     this.scale = scale;
-    this.ss = 1; // mnożnik rozdzielczości renderu (opcja "Wysoka rozdzielczość")
+    this.ss = 1; // render resolution multiplier ("High resolution" option)
     this.maxDpr = maxDpr;
     const gl = canvas.getContext('webgl2', {
       antialias: false, alpha: false, depth: false, stencil: false,
@@ -197,7 +197,7 @@ export class Engine {
 
     this.vs = this.shader(gl.VERTEX_SHADER, VERT, 'vertex');
     this.scenes = {};
-    this.sims = {}; // symulacje (sceny z pamięcią) — tworzone przy pierwszym użyciu
+    this.sims = {}; // simulations (stateful scenes) — created on first use
     for (const sc of SCENES) {
       if (sc.sim) continue;
       try {
@@ -272,8 +272,8 @@ export class Engine {
       c.width = w;
       c.height = h;
     }
-    // Wysoka rozdzielczość (ss > 1): sceny liczone gęściej niż ekran, ale nie gęściej niż 2 piksele
-    // renderu na piksel CSS — na ekranach Retina i tak jest już gęsto.
+    // High resolution (ss > 1): scenes rendered denser than the screen, but no denser than 2 render
+    // pixels per CSS pixel — Retina screens are dense enough already.
     const factor = Math.min(this.scale * this.ss, Math.max(this.scale, 2 / dpr));
     const rw = Math.max(2, Math.round(w * factor));
     const rh = Math.max(2, Math.round(h * factor));
@@ -295,7 +295,7 @@ export class Engine {
     };
   }
 
-  // L = parametry warstwy: { int, react, flow, col: { bg, c1, c2 } }.
+  // L = layer parameters: { int, react, flow, col: { bg, c1, c2 } }.
   drawScene(slot, f, L, tgt) {
     const gl = this.gl;
     const sc = SCENE_BY_ID[slot.id];
@@ -327,7 +327,7 @@ export class Engine {
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
-  // Scena-symulacja: stan żyje między klatkami; przy błędzie (np. brak float) — czarny obraz.
+  // Simulation scene: state lives between frames; on error (e.g. no float support) — a black image.
   drawSim(sc, slot, f, L, tgt) {
     const gl = this.gl;
     let sim = this.sims[sc.id];
@@ -354,7 +354,7 @@ export class Engine {
     this.resize();
     gl.viewport(0, 0, this.w, this.h);
 
-    // Warstwę rysujemy tylko wtedy, gdy jest choć trochę widoczna.
+    // A layer is drawn only when it is at least slightly visible.
     if (f.bal > 0.001) {
       if (f.mix < 0.999) this.drawScene(f.a, f, f.depthL, this.fb.a);
       if (f.mix > 0.001) this.drawScene(f.b, f, f.depthL, this.fb.b);

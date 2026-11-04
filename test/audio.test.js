@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Analysis, Clock, Demo } from '../js/audio.js';
 
-// Deterministyczny "losowy" jitter, żeby test był powtarzalny.
+// Deterministic "random" jitter so the test is repeatable.
 function rng(seed = 1) {
   return () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 }
@@ -24,28 +24,28 @@ function runClock(bpm, start, secs = 24) {
   return c.bpm;
 }
 
-test('zegar dochodzi do tempa stóp (128 BPM, start 120)', () => {
+test('clock converges on the kick tempo (128 BPM, start 120)', () => {
   assert.ok(Math.abs(runClock(128, 120) - 128) < 0.5);
 });
 
-test('zegar trzyma szybsze tempo (140 BPM, start 132)', () => {
+test('clock holds a faster tempo (140 BPM, start 132)', () => {
   assert.ok(Math.abs(runClock(140, 132) - 140) < 0.5);
 });
 
-test('tap tempo: stuknięcia co 0,5 s = 120 BPM', () => {
+test('tap tempo: taps every 0.5 s = 120 BPM', () => {
   const c = new Clock();
   for (let i = 0; i < 5; i++) c.tap(i * 0.5);
   assert.ok(Math.abs(c.bpm - 120) < 0.01);
 });
 
-test('przerwa >2 s zaczyna tap od nowa', () => {
+test('a gap of more than 2 s restarts tapping', () => {
   const c = new Clock();
   for (let i = 0; i < 4; i++) c.tap(i * 0.5);
   for (let i = 0; i < 4; i++) c.tap(10 + i * 0.4);
   assert.ok(Math.abs(c.bpm - 150) < 0.01);
 });
 
-test('analiza wykrywa stopy w paśmie sub', () => {
+test('analysis detects kicks in the sub band', () => {
   const an = new Analysis();
   const binHz = 48000 / 2048;
   const freq = new Float32Array(1024);
@@ -57,20 +57,20 @@ test('analiza wykrywa stopy w paśmie sub', () => {
   for (let t = 0; t < 20; t += dt) {
     if (t - lastKick >= per) {
       lastKick = t;
-      if (t > 2) kicks++; // pierwsze 2 s: analiza się "rozgrzewa"
+      if (t > 2) kicks++; // first 2 s: the analysis "warms up"
     }
     const since = t - lastKick;
     freq.fill(-100);
-    const sub = -30 - since * 120; // stopa: szybki zanik
+    const sub = -30 - since * 120; // kick: fast decay
     for (let i = 1; i <= 5; i++) freq[i] = Math.max(-100, sub);
-    for (let i = 300; i < 400; i++) freq[i] = -70; // stały szum w górze
+    for (let i = 300; i < 400; i++) freq[i] = -70; // constant noise up high
     const o = an.update(freq, binHz, dt, t);
     if (o.onset && t > 2) onsets++;
   }
-  assert.ok(Math.abs(onsets - kicks) <= 1, `stopy ${kicks}, wykryte ${onsets}`);
+  assert.ok(Math.abs(onsets - kicks) <= 1, `kicks ${kicks}, detected ${onsets}`);
 });
 
-test('analiza nie widzi stóp w ciszy z szumem', () => {
+test('analysis finds no kicks in quiet noise', () => {
   const an = new Analysis();
   const freq = new Float32Array(1024);
   let onsets = 0;
@@ -81,11 +81,11 @@ test('analiza nie widzi stóp w ciszy z szumem', () => {
   assert.equal(onsets, 0);
 });
 
-test('demo: stopa na każdy beat, breakdown od 48. taktu', () => {
+test('demo: a kick on every beat, breakdown from bar 48', () => {
   const d = new Demo();
   let onsets = 0;
   for (let i = 0; i < 60 * 30; i++) if (d.update(1 / 60).onset) onsets++;
-  assert.ok(Math.abs(onsets - 64) <= 1); // 30 s przy 128 BPM
+  assert.ok(Math.abs(onsets - 64) <= 1); // 30 s at 128 BPM
   d.b = 48 * 4 + 0.5;
   assert.equal(d.update(0).onset, false);
   assert.ok(d.out.energy < 0.5);

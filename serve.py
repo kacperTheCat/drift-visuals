@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lokalny serwer DRIFT bez cache — po każdej zmianie plików wystarczy odświeżyć stronę."""
+"""Local DRIFT server without caching — after any file change, just reload the page."""
 import http.server
 import sys
 

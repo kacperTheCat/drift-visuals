@@ -1,11 +1,11 @@
-// Reżyser: łączy audio, zegar i autopilota; co klatkę produkuje "frame" dla renderera.
+// Director: ties together audio, the clock and the autopilot; produces a "frame" for the renderer every tick.
 import { AudioIn, Analysis, Clock, Demo } from './audio.js';
 import { SCENES, DEPTH, BACK } from './scenes.js';
 import { PALETTES } from './palettes.js';
 
-export const RANDOM = '__random'; // wartość "losowa" w programie dropu
-export const TRANSITIONS = { cut: 0, beat: 1, bar: 4, bar2: 8, phrase: 16 }; // w beatach
-// Tryby nakładania głębi na tło (kolejność = numer trybu w shaderze kompozycji).
+export const RANDOM = '__random'; // the "random" value in the drop program
+export const TRANSITIONS = { cut: 0, beat: 1, bar: 4, bar2: 8, phrase: 16 }; // in beats
+// Ways of blending depth over the backdrop (order = mode number in the composite shader).
 export const BLENDS = [
   ['normal', 'Normal'],
   ['screen', 'Screen'],
@@ -14,10 +14,10 @@ export const BLENDS = [
 ];
 const STORE = 'drift.settings.v1';
 
-// Sceny, których shader faktycznie używa parametrów wariacji (uVar).
+// Scenes whose shader actually uses the variation parameters (uVar).
 export const VARIES = new Set(SCENES.filter((s) => s.sim || /uVar\.[xyzw]/.test((s.map || '') + s.frag)).map((s) => s.id));
 
-// Czy wariacja w warstwie ma sens: scena ją obsługuje i warstwa jest widoczna. Zwraca powód albo null.
+// Whether a variation makes sense on a layer: the scene supports it and the layer is visible. Returns a reason or null.
 export function varyBlocked(d, layer) {
   const id = (layer === 'back' ? d.bk : d.dp).cur.id;
   if (!VARIES.has(id)) return 'this scene has no variations';
@@ -49,32 +49,32 @@ export class Director {
 
     this.s = Object.assign(
       {
-        // głębia
+        // depth
         intensity: 1,
         react: 1,
         speed: 2,
         trails: 1,
-        // tło
+        // backdrop
         backReact: 1,
         backSpeed: 2,
-        // czułość wejścia audio w dB
+        // audio input sensitivity in dB
         inputGain: 0,
-        // jakość obrazu: wygładzanie krawędzi głębi (FXAA), render w 1,5× rozdzielczości
+        // image quality: depth edge smoothing (FXAA), render at 1.5× resolution
         fxaa: true,
         hiRes: true,
-        // ręczny drop: co narasta w trakcie odliczania i co się dzieje w momencie dropu
+        // manual drop: what builds up during the countdown and what happens on the drop
         dropBars: 1,
         dropBuild: { blur: true, accel: true, dark: false, strobe: false, glitch: true, shatter: false },
         dropHit: { vary: true, flash: true },
-        transition: 'bar', // przejście scen głębi
-        backTransition: 'bar2', // przejście teł
+        transition: 'bar', // depth scene transition
+        backTransition: 'bar2', // backdrop transition
         phrase: 8,
         autopilot: false,
         autoPalette: true,
         bpmAuto: false,
-        palette: 5, // paleta głębi
-        backPalette: 2, // paleta tła
-        linkPalettes: false, // tło w kolorach głębi
+        palette: 5, // depth palette
+        backPalette: 2, // backdrop palette
+        linkPalettes: false, // backdrop uses depth colours
         blend: 'normal',
         autoBlend: true,
         balance: 0.646,
@@ -85,7 +85,7 @@ export class Director {
       },
       load(),
     );
-    // Pula autopilota: dopisz nowe sceny, usuń wpisy po scenach, których już nie ma.
+    // Autopilot pool: add new scenes, drop entries for scenes that no longer exist.
     const ids = new Set(SCENES.map((sc) => sc.id));
     for (const id of Object.keys(this.s.pool)) if (!ids.has(id)) delete this.s.pool[id];
     for (const sc of SCENES) if (!(sc.id in this.s.pool)) this.s.pool[sc.id] = true;
@@ -93,18 +93,18 @@ export class Director {
     if (!PALETTES[this.s.palette]) this.s.palette = 0;
     if (!PALETTES[this.s.backPalette]) this.s.backPalette = 0;
     if (!BLENDS.some(([m]) => m === this.s.blend)) this.s.blend = 'normal';
-    this.drop = null; // uzbrojony drop: { bars, from, at } (w beatach)
-    // Program dropu: co ma wejść w momencie dropu. null = bez zmian (zostaje to, co gra teraz).
+    this.drop = null; // armed drop: { bars, from, at } (in beats)
+    // Drop program: what should come in on the drop. null = no change (whatever is playing stays).
     this.dropProg = { scene: null, back: null, pal: null, palBack: null };
 
-    // Każda warstwa: bieżąca scena + poprzednia (w trakcie przejścia, p = postęp 0..1).
+    // Each layer: current scene + previous one (during a transition, p = progress 0..1).
     this.dp = { cur: this.slot(DEPTH[0].id), prev: null, p: 1, beats: 4 };
     this.bk = { cur: this.slot(BACK[0].id), prev: null, p: 1, beats: 16 };
-    // Balans warstw: 0 = samo tło, 0.5 = oba plany, 1 = sama głębia. depthOn=false (L) sprowadza do 0.
+    // Layer balance: 0 = backdrop only, 0.5 = both layers, 1 = depth only. depthOn=false (L) brings it to 0.
     this.depthOn = true;
     this.bal = this.s.balance;
 
-    // Bieżące (płynnie dociągane) kolory każdej warstwy.
+    // Current (smoothly approached) colours of each layer.
     const copy = (p) => ({ bg: [...p.bg], c1: [...p.c1], c2: [...p.c2] });
     this.col = copy(PALETTES[this.s.palette]);
     this.colBack = copy(PALETTES[this.backPaletteIndex]);
@@ -115,24 +115,24 @@ export class Director {
     this.high = 0;
     this.energy = 0.6;
     this.level = -120;
-    this.flow = 0; // czas przepływu głębi
-    this.flowBack = 0; // czas przepływu tła
+    this.flow = 0; // depth flow time
+    this.flowBack = 0; // backdrop flow time
     this.flash = 0;
     this.black = false;
     this.blackAmt = 0;
     this.strobe = false;
-    this.glitch = false; // trzymany przycisk/klawisz glitcha
+    this.glitch = false; // glitch button/key held
     this.glitchAmt = 0;
-    this.shatterOn = false; // rozpad (przełącznik)
-    this.shatterAmt = 0; // postęp rozpadu 0..1
-    this.shatterSeed = 0; // wzór pęknięć
+    this.shatterOn = false; // shatter (toggle)
+    this.shatterAmt = 0; // shatter progress 0..1
+    this.shatterSeed = 0; // crack pattern
 
     this.state = 'groove';
     this.lastKickT = performance.now() / 1000;
     this.pendingDrop = 0;
     this.lastBar = 0;
     this.barsSince = 0;
-    this.events = []; // ostatnie zdarzenia do podglądu w panelu
+    this.events = []; // recent events for the panel preview
 
     this.last = 0;
     this.frame = null;
@@ -154,7 +154,7 @@ export class Director {
     this.events.length = Math.min(this.events.length, 6);
   }
 
-  // ---------- źródła dźwięku ----------
+  // ---------- audio sources ----------
   async useInput(deviceId) {
     await this.audio.useDevice(deviceId);
     this.source = 'input';
@@ -176,7 +176,7 @@ export class Director {
     this.log('Demo mode (synthetic beat)');
   }
 
-  // ---------- sceny ----------
+  // ---------- scenes ----------
   slot(id) {
     const v = rand4();
     return { id, v, vt: [...v] };
@@ -186,7 +186,7 @@ export class Director {
     return this.dp.cur.id;
   }
 
-  // Płynne przejście sceny w warstwie (głębia lub tło).
+  // Smooth scene transition on a layer (depth or backdrop).
   static fadeLayer(L, slot, beats) {
     L.prev = L.cur;
     L.cur = slot;
@@ -204,7 +204,7 @@ export class Director {
     if (!auto) this.barsSince = 0;
   }
 
-  // ---------- balans i nakładanie warstw ----------
+  // ---------- balance and layer blending ----------
   setBalance(v) {
     this.set('balance', Math.min(1, Math.max(0, v)));
     this.depthOn = true;
@@ -224,7 +224,7 @@ export class Director {
     this.setBlend(BLENDS[(i + 1) % BLENDS.length][0]);
   }
 
-  // ---------- tło ----------
+  // ---------- backdrop ----------
   setBack(id, beats = TRANSITIONS[this.s.backTransition] ?? 8) {
     if (!id || id === this.bk.cur.id) return;
     Director.fadeLayer(this.bk, this.slot(id), beats);
@@ -249,10 +249,10 @@ export class Director {
     return list.length ? list[Math.floor(Math.random() * list.length)].id : null;
   }
 
-  // Wariacja = nowe cele dla 4 parametrów sceny (dociągane płynnie przez ~5 s).
+  // Variation = new targets for the scene's 4 parameters (approached smoothly over ~5 s).
   vary(amount = 1, layer = 'depth') {
     const sl = (layer === 'back' ? this.bk : this.dp).cur;
-    if (!VARIES.has(sl.id)) return; // scena nie ma parametrów wariacji
+    if (!VARIES.has(sl.id)) return; // the scene has no variation parameters
     sl.vt = sl.vt.map((x) => lerp(x, Math.random(), amount));
   }
 
@@ -261,7 +261,7 @@ export class Director {
     this.save();
   }
 
-  // layer: 'depth' albo 'back'
+  // layer: 'depth' or 'back'
   setPalette(i, layer = 'depth') {
     const n = PALETTES.length;
     this.set(layer === 'back' ? 'backPalette' : 'palette', ((i % n) + n) % n);
@@ -275,19 +275,19 @@ export class Director {
     return this.s.linkPalettes ? this.s.palette : this.s.backPalette;
   }
 
-  // Losowa inna paleta niż bieżąca.
+  // A random palette other than the current one.
   randomPalette(layer) {
     const cur = layer === 'back' ? this.s.backPalette : this.s.palette;
     this.setPalette(cur + 1 + Math.floor(Math.random() * (PALETTES.length - 1)), layer);
   }
 
-  // ---------- akcje na żywo ----------
+  // ---------- live actions ----------
   toggleAutopilot() {
     this.set('autopilot', !this.s.autopilot);
     this.barsSince = 0;
   }
 
-  // Rozpad: obraz pęka i przez 4 takty rozpada się na opadające odłamki; ponownie = złożenie.
+  // Shatter: the image cracks and falls apart into falling shards over 4 bars; press again to reassemble.
   toggleShatter() {
     this.shatterOn = !this.shatterOn;
     if (this.shatterOn && this.shatterAmt < 0.02) this.shatterSeed = Math.floor(Math.random() * 1000);
@@ -301,8 +301,8 @@ export class Director {
     this.flash = 1;
   }
 
-  // Ręczne BPM (np. z wyświetlacza RX3): ustawia tempo i wyłącza AUTO,
-  // faza nadal dociąga się do wykrytej stopy.
+  // Manual BPM (e.g. read off the DJ gear's display): sets the tempo and turns AUTO off,
+  // the phase still locks onto the detected kick.
   setBpm(v) {
     const bpm = Math.min(200, Math.max(60, v));
     this.clock.bpm = bpm;
@@ -322,7 +322,7 @@ export class Director {
     this.barsSince = 0;
   }
 
-  // Następna/poprzednia scena w warstwie (dla MIDI i przycisków).
+  // Next/previous scene on a layer (for MIDI and buttons).
   stepScene(dir, layer = 'depth') {
     const list = layer === 'back' ? BACK : DEPTH;
     const cur = (layer === 'back' ? this.bk : this.dp).cur.id;
@@ -332,9 +332,9 @@ export class Director {
     else this.setScene(id);
   }
 
-  // ---------- MIDI clock (24 impulsy na beat) ----------
-  // Tempo liczone z odstępów impulsów. Po komunikacie Start znamy też początek frazy,
-  // więc fazę bierzemy z zegara, a nie z wykrywania stopy.
+  // ---------- MIDI clock (24 pulses per beat) ----------
+  // Tempo computed from pulse intervals. After a Start message we also know the phrase start,
+  // so the phase comes from the clock rather than kick detection.
   midiTick(t) {
     const mc = (this.mc ??= { ticks: [], count: 0, started: false, last: 0 });
     mc.last = t;
@@ -372,14 +372,14 @@ export class Director {
     return !!this.mc && performance.now() / 1000 - this.mc.last < 0.5;
   }
 
-  // ---------- automatyka ----------
+  // ---------- automation ----------
   onOnset(t) {
-    // Przy MIDI clock tempo (a po Start także faza) pochodzi z zegara, nie ze stopy.
+    // With MIDI clock the tempo (and after Start also the phase) comes from the clock, not the kick.
     const mc = this.midiClockActive;
     if (!(mc && this.mc.started)) this.clock.onset(t, this.s.bpmAuto && !mc);
     this.lastKickT = t;
     if (this.state !== 'breakdown') return;
-    // Drop = dwie stopy w odstępie ~1 beatu po ciszy w basie.
+    // Drop = two kicks about 1 beat apart after a silence in the bass.
     const beatLen = 60 / this.clock.bpm;
     if (this.pendingDrop && Math.abs(t - this.pendingDrop - beatLen) < beatLen * 0.3) {
       this.pendingDrop = 0;
@@ -398,7 +398,7 @@ export class Director {
     this.log('Breakdown');
     if (!this.s.autopilot) return;
     if (this.s.autoBack) this.setBack(this.pick('calm', 'back'), 16);
-    // Połowa breakdownów: zostaw samo tło; reszta: spokojna scena głębi.
+    // Half of the breakdowns: leave the backdrop alone; the rest: a calm depth scene.
     if (Math.random() < 0.5) {
       this.depthOn = false;
       this.log('Autopilot → backdrop only');
@@ -408,7 +408,7 @@ export class Director {
   onDrop() {
     this.state = 'groove';
     this.log('Drop!');
-    // Drop zwykle zaczyna frazę — wyrównujemy licznik (druga stopa = beat 2).
+    // A drop usually starts a phrase — align the counter (second kick = beat 2).
     this.clock.alignPhrase(1);
     this.lastBar = Math.floor(this.clock.beats / 4);
     this.barsSince = 0;
@@ -420,9 +420,9 @@ export class Director {
     }
   }
 
-  // ---------- ręczny drop ----------
-  // Uzbrojenie: drop wypada na początku taktu za `bars` taktów (licząc od bieżącego taktu).
-  // Ponowne uzbrojenie tą samą długością (albo bez podania) anuluje.
+  // ---------- manual drop ----------
+  // Arming: the drop lands at the start of a bar `bars` bars from now (counting from the current bar).
+  // Arming again with the same length (or with none) cancels.
   armDrop(bars = null) {
     if (this.drop && (bars === null || bars === this.drop.bars)) {
       this.drop = null;
@@ -436,7 +436,7 @@ export class Director {
     this.log(`Drop in ${bars} ${bars === 1 ? 'bar' : 'bars'}`);
   }
 
-  // Postęp odliczania 0..1 (albo null, gdy drop nie jest uzbrojony).
+  // Countdown progress 0..1 (or null when no drop is armed).
   get dropProgress() {
     const dr = this.drop;
     if (!dr) return null;
@@ -448,7 +448,7 @@ export class Director {
     this.set(g, { ...this.s[g], [key]: !this.s[g][key] });
   }
 
-  // Ustawienie pola programu dropu; wybranie tego, co gra teraz = brak zmiany (null).
+  // Sets a drop program field; choosing what is playing now = no change (null).
   setDropProg(key, value) {
     const current = { scene: this.dp.cur.id, back: this.bk.cur.id, pal: this.s.palette, palBack: this.backPaletteIndex }[key];
     if (value !== RANDOM && (key === 'pal' || key === 'palBack')) value = +value;
@@ -462,7 +462,7 @@ export class Director {
     this.state = 'groove';
     this.depthOn = true;
     this.bal = this.s.balance;
-    // zaprogramowane zmiany (cięcie)
+    // programmed changes (cut)
     if (pg.scene) this.setScene(pg.scene === RANDOM ? this.pick('drive') : pg.scene, 'cut', true);
     if (pg.back) this.setBack(pg.back === RANDOM ? this.pick(null, 'back') : pg.back, 0);
     if (pg.pal !== null) pg.pal === RANDOM ? this.randomPalette('depth') : this.setPalette(pg.pal, 'depth');
@@ -474,11 +474,11 @@ export class Director {
     }
     if (h.flash) this.flash = 1;
     this.kick = 1;
-    // rozpad (ręczny i z narastania) — obraz składa się natychmiast
+    // shatter (manual and from the build-up) — the image reassembles instantly
     this.shatterOn = false;
     this.shatterAmt = 0;
     this.glitchAmt = 0;
-    // Drop = początek frazy dla autopilota.
+    // Drop = phrase start for the autopilot.
     this.lastBar = Math.floor(this.clock.beats / 4);
     this.barsSince = 0;
     this.log('DROP!');
@@ -486,7 +486,7 @@ export class Director {
 
   onBar(bar) {
     this.barsSince++;
-    if (!this.s.autopilot || this.drop) return; // w trakcie odliczania autopilot nie miesza
+    if (!this.s.autopilot || this.drop) return; // the autopilot does not interfere during the countdown
     const ph = this.s.phrase;
     if (bar % ph === 0 && this.barsSince >= ph / 2) {
       this.barsSince = 0;
@@ -508,7 +508,7 @@ export class Director {
           this.log(`Autopilot → backdrop ${SCENES.find((s) => s.id === id)?.name}`);
         } else if (r2 < 0.7) this.vary(1, 'back');
       }
-      // Nakładanie: zwykle Normalny, czasem na frazę inny tryb.
+      // Blend: usually Normal, sometimes a different mode for a phrase.
       if (this.s.autoBlend && this.state === 'groove' && Math.random() < 0.3) {
         const m = Math.random() < 0.4 ? 'normal' : BLENDS[1 + Math.floor(Math.random() * 3)][0];
         if (m !== this.s.blend) {
@@ -526,9 +526,9 @@ export class Director {
     }
   }
 
-  // ---------- pętla ----------
+  // ---------- loop ----------
   tick(now = performance.now()) {
-    // Tick może być wołany z panelu i z okna wyjścia — liczymy najwyżej raz na ~6 ms.
+    // Tick can be called from the panel and from the output window — compute at most once per ~6 ms.
     if (this.frame && now - this.last < 6) return this.frame;
     const dt = this.last ? Math.min((now - this.last) / 1000, 0.1) : 1 / 60;
     this.last = now;
@@ -567,7 +567,7 @@ export class Director {
       L.p = Math.min(1, L.p + beatDt / L.beats);
       if (L.p >= 1) L.prev = null;
     }
-    // Głębia wraca w 1 beat, chowa się (L / breakdown) w 2 takty.
+    // Depth comes back over 1 beat, hides (L / breakdown) over 2 bars.
     const bTarget = this.depthOn ? this.s.balance : 0;
     const bRate = beatDt / (bTarget > this.bal ? 1 : 8);
     this.bal += Math.sign(bTarget - this.bal) * Math.min(Math.abs(bTarget - this.bal), bRate);
@@ -582,23 +582,23 @@ export class Director {
     this.flash *= Math.exp(-dt / 0.18);
     let flash = this.strobe ? ((clk.beats * 4) % 1 < 0.5 ? 1 : 0) : this.flash;
 
-    // Glitch: póki trzymany; stopa na chwilę go wzmacnia.
+    // Glitch: while held; the kick briefly boosts it.
     let glitchTarget = this.glitch ? 0.55 + 0.45 * this.kick : 0;
 
-    // Narastanie przed ręcznym dropem (p: 0 -> 1, efekty rosną z kwadratem postępu).
+    // Build-up before a manual drop (p: 0 -> 1, effects grow with the square of progress).
     const dp01 = this.dropProgress;
     const build = dp01 === null ? null : this.s.dropBuild;
     const pp = dp01 === null ? 0 : dp01 * dp01;
     if (build?.strobe && this.drop.at - clk.beats <= 4) {
-      // ostatni takt: ósemki, ostatnie 2 beaty: szesnastki
+      // last bar: eighth notes, last 2 beats: sixteenths
       const rate = this.drop.at - clk.beats <= 2 ? 4 : 2;
       if ((clk.beats * rate) % 1 < 0.35) flash = Math.max(flash, 0.55);
     }
     if (build?.glitch && this.drop.at - clk.beats <= 8) {
-      const g = 1 - (this.drop.at - clk.beats) / 8; // ostatnie 2 takty: glitch narasta
+      const g = 1 - (this.drop.at - clk.beats) / 8; // last 2 bars: glitch builds up
       glitchTarget = Math.max(glitchTarget, g * g);
     }
-    // Rozpad: ręczny narasta przez 16 beatów, składanie trwa 1 beat; w narastaniu dropu = postęp odliczania.
+    // Shatter: manual builds up over 16 beats, reassembly takes 1 beat; in a drop build-up = countdown progress.
     if (this.shatterOn) this.shatterAmt = Math.min(1, this.shatterAmt + beatDt / 16);
     else this.shatterAmt = Math.max(0, this.shatterAmt - beatDt);
     let shatter = this.shatterAmt;
@@ -606,7 +606,7 @@ export class Director {
       if (dp01 < 0.02 && shatter < 0.02 && this.shatterSeed !== this.drop.seed) this.shatterSeed = this.drop.seed;
       shatter = Math.max(shatter, dp01);
     }
-    // szybki atak, krótkie wybrzmienie
+    // fast attack, short release
     this.glitchAmt += (glitchTarget - this.glitchAmt) * (1 - Math.exp(-dt / (glitchTarget > this.glitchAmt ? 0.02 : 0.08)));
     this.blackAmt = lerp(this.blackAmt, this.black ? 1 : 0, 1 - Math.exp(-dt / 0.08));
 
@@ -644,7 +644,7 @@ export class Director {
       glitch: this.glitchAmt > 0.01 ? this.glitchAmt : 0,
       shatter,
       shatterSeed: this.shatterSeed,
-      glitchSeed: Math.floor(clk.beats * 2) + (this.kick > 0.9 ? 0.5 : 0), // nowy wzór co ósemkę i na stopę
+      glitchSeed: Math.floor(clk.beats * 2) + (this.kick > 0.9 ? 0.5 : 0), // new pattern every eighth note and on the kick
       a: dp.prev ? { id: dp.prev.id, v: dp.prev.v } : { id: dp.cur.id, v: dp.cur.v },
       b: { id: dp.cur.id, v: dp.cur.v },
       mix: dp.prev ? ease(dp.p) : 1,

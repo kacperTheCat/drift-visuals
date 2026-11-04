@@ -1,7 +1,7 @@
-// Skróty klawiszowe — działają w panelu i w oknie wyjścia.
+// Keyboard shortcuts — work in the panel and in the output window.
 import { DEPTH } from './scenes.js';
 
-// Klawisze scen głębi: 1–0, potem wolne litery (T, O, P, S, G, L... są zajęte przez inne skróty).
+// Depth scene keys: 1–0, then free letters (T, O, P, S, G, L... are taken by other shortcuts).
 export const DEPTH_KEYS = [
   ...'1234567890'.split('').map((c) => ['Digit' + c, c]),
   ...'QWERYUIAJKN'.split('').map((c) => ['Key' + c, c]),
@@ -36,7 +36,7 @@ export function bindKeys(win, getDir, extra = {}) {
     const tag = e.target && e.target.tagName;
     if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if (document.querySelector('.modal:not([hidden])')) return; // otwarte okno (np. mapowanie MIDI)
+    if (document.querySelector('.modal:not([hidden])')) return; // a modal is open (e.g. MIDI mapping)
     const d = getDir();
     if (!d) return;
     const k = e.code;

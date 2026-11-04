@@ -1,4 +1,4 @@
-// Wejście audio, analiza pasm (z automatycznym wzmocnieniem), detekcja stopy, zegar BPM.
+// Audio input, band analysis (with automatic gain), kick detection, BPM clock.
 
 export class AudioIn {
   constructor() {
@@ -12,7 +12,7 @@ export class AudioIn {
     this.gainLin = 1;
   }
 
-  // Czułość w dB (0 = bez zmian, +20 dB = 10× głośniej).
+  // Sensitivity in dB (0 = unchanged, +20 dB = 10× louder).
   setGainDb(db) {
     this.gainLin = Math.pow(10, db / 20);
     if (this.gain) this.gain.gain.setTargetAtTime(this.gainLin, this.ctx.currentTime, 0.05);
@@ -28,7 +28,7 @@ export class AudioIn {
       a.maxDecibels = -10;
       this.analyser = a;
       this.freq = new Float32Array(a.frequencyBinCount);
-      // Czułość wejścia: wzmocnienie przed analizą (nie wpływa na to, co słychać z pliku).
+      // Input sensitivity: gain before analysis (does not affect what you hear from a file).
       this.gain = this.ctx.createGain();
       this.gain.gain.value = this.gainLin;
       this.gain.connect(a);
@@ -60,7 +60,7 @@ export class AudioIn {
 
   async useDevice(deviceId) {
     this.ensureCtx();
-    // Wyłączone przetwarzanie "rozmowowe" — inaczej przeglądarka tłumi bas i pompuje głośność.
+    // Browser "voice call" processing disabled — otherwise it cuts the bass and pumps the volume.
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: {
         deviceId: deviceId ? { exact: deviceId } : undefined,
@@ -111,8 +111,8 @@ const BANDS = [
 ];
 const FLOOR = Math.pow(10, -75 / 20);
 
-// Każde pasmo jest normalizowane do własnego, wolno opadającego szczytu (AGC),
-// więc poziom wejścia (mikrofon / line-in / plik) nie ma dużego znaczenia.
+// Each band is normalised to its own slowly decaying peak (AGC),
+// so the input level (microphone / line-in / file) matters little.
 export class Analysis {
   constructor() {
     this.reset();
@@ -157,7 +157,7 @@ export class Analysis {
       o[k] = this.v[k];
     }
 
-    // Stopa = nagły wzrost w paśmie sub względem ostatnich klatek, powyżej adaptacyjnego progu.
+    // Kick = a sudden rise in the sub band relative to recent frames, above an adaptive threshold.
     const flux = Math.max(0, subN - Math.min(...this.subHist));
     this.subHist.shift();
     this.subHist.push(subN);
@@ -180,7 +180,7 @@ export class Analysis {
   }
 }
 
-// Zegar: płynie sam w ustalonym BPM, a detekcja stopy dociąga fazę (PLL) i tempo.
+// Clock: runs on its own at the set BPM, while kick detection pulls in the phase (PLL) and tempo.
 export class Clock {
   constructor() {
     this.bpm = 128;
@@ -202,7 +202,7 @@ export class Clock {
   }
 
   estimate() {
-    // Histogram odstępów między stopami, zawinięty do 90–180 BPM.
+    // Histogram of intervals between kicks, folded into 90–180 BPM.
     const H = new Float32Array(181);
     const o = this.on;
     for (let i = 1; i < o.length; i++) {
@@ -229,7 +229,7 @@ export class Clock {
       w += H[n];
     }
     const coarse = s / w;
-    // Doprecyzowanie: regresja czasów stóp względem numeru beatu — uśrednia kwantyzację do klatek.
+    // Refinement: regression of kick times against beat number — averages out frame quantisation.
     const per = 60 / coarse;
     let n = 0, sk = 0, st = 0, skk = 0, skt = 0;
     for (const t of o) {
@@ -253,14 +253,14 @@ export class Clock {
     this.beats = Math.round(this.beats);
   }
 
-  // Ustawia "teraz" jako początek frazy (16 taktów = 64 beaty).
+  // Marks "now" as the start of a phrase (16 bars = 64 beats).
   alignPhrase(offset = 0) {
     this.beats = Math.ceil((this.beats - offset - 2) / 64) * 64 + offset;
   }
 }
 
-// Syntetyczny sygnał, gdy nie ma dźwięku: stopa na każdy beat, hi-haty na offbeat,
-// breakdown przez 16 taktów co 64 takty — żeby było widać działanie autopilota.
+// Synthetic signal when there is no sound: a kick on every beat, hi-hats on the offbeat,
+// a 16-bar breakdown every 64 bars — so the autopilot can be seen working.
 export class Demo {
   constructor() {
     this.b = 0;

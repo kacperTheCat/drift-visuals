@@ -1,5 +1,5 @@
-// Palety: bg = tło (prawie czarne), c1 = kolor główny (światło), c2 = kolor drugi (cień/akcent).
-// Dodanie palety = dopisanie jednej linijki.
+// Palettes: bg = background (near black), c1 = main colour (light), c2 = second colour (shadow/accent).
+// Adding a palette = adding one line.
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
 
 export const PALETTES = [

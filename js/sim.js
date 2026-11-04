@@ -1,7 +1,7 @@
-// Sceny z pamięcią (symulacje): stan trzymany w teksturach zmiennoprzecinkowych, liczony co klatkę.
-//   'fluid' — ciecz (stable fluids): stopa wstrzykuje barwne wiry, bas stale delikatnie miesza.
-//   'rd'    — reakcja-dyfuzja Graya-Scotta: wzory Turinga rosną na żywo, stopa zasiewa nowe plamy.
-// Każda symulacja liczy się w niższej rozdzielczości i jest wygładzana przy wyświetlaniu.
+// Stateful scenes (simulations): state kept in floating-point textures, updated every frame.
+//   'fluid' — fluid (stable fluids): the kick injects coloured swirls, bass keeps gently stirring.
+//   'rd'    — Gray-Scott reaction-diffusion: Turing patterns grow live, the kick seeds new spots.
+// Each simulation runs at a lower resolution and is smoothed when displayed.
 
 const FLUID = {
   advect: `uniform sampler2D uVel,uSrc;uniform float uDt,uDiss;
@@ -46,7 +46,7 @@ void main(){
   vec2 d=vUv-uPt;d.x*=uAspect;
   fragColor=vec4(texture(uSrc,vUv).xyz+uVal*exp(-dot(d,d)/uR),1.);
 }`,
-  // Wyświetlanie: barwnik w kolorach palety + delikatne cieniowanie z gradientu (wrażenie grubości).
+  // Display: dye in palette colours + subtle gradient shading (a sense of thickness).
   display: `uniform sampler2D uDye;uniform vec2 uTx;uniform vec3 uBg;uniform float uInt;
 void main(){
   vec3 c=texture(uDye,vUv).rgb;
@@ -61,7 +61,7 @@ void main(){
 };
 
 const RD = {
-  // Gray-Scott: A (r), B (g). Laplasjan 3×3, kilka kroków na klatkę.
+  // Gray-Scott: A (r), B (g). 3×3 Laplacian, several steps per frame.
   step: `uniform sampler2D uS;uniform vec2 uTx;uniform float uF,uK;
 void main(){
   vec2 s=texture(uS,vUv).rg;
@@ -77,12 +77,12 @@ void main(){
 float h(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
 void main(){
   vec2 s=uInit>.5?vec2(1.,0.):texture(uS,vUv).rg;
-  if(uInit>.5&&h(floor(vUv*vec2(40.*uAspect,40.)))>.93) s.g=1.;   // początkowe zarodki (kwadratowe)
+  if(uInit>.5&&h(floor(vUv*vec2(40.*uAspect,40.)))>.93) s.g=1.;   // initial seeds (square)
   vec2 d=vUv-uPt;d.x*=uAspect;
   if(dot(d,d)<uR) s.g=1.;
   fragColor=vec4(s,0.,1.);
 }`,
-  // Próbka pokrycia: siatka 32×32 punktów (1 = jest wzór), czytana co pół sekundy.
+  // Coverage probe: a 32×32 grid of points (1 = pattern present), read every half second.
   probe: `uniform sampler2D uS;
 void main(){ fragColor=vec4(step(.2,texture(uS,vUv).g),0.,0.,1.); }`,
   display: `uniform sampler2D uS;uniform vec2 uTx;uniform vec3 uBg,uC1,uC2;uniform float uInt,uKick;
@@ -120,7 +120,7 @@ in vec2 vUv; out vec4 fragColor;
 ${src}`, name);
   }
 
-  // Tekstura stanu (half float albo — gdy trzeba precyzji i karta pozwala — float32), wygładzana.
+  // State texture (half float or — when precision is needed and the GPU allows — float32), filtered.
   tex(w, h, f32 = false) {
     const gl = this.gl;
     const t = gl.createTexture();
@@ -139,14 +139,14 @@ ${src}`, name);
     return { tex: t, fbo, w, h };
   }
 
-  // Para tekstur do naprzemiennego czytania/pisania.
+  // A pair of textures for alternating read/write.
   pair(w, h, f32 = false) {
     const p = { a: this.tex(w, h, f32), b: this.tex(w, h, f32), w, h };
     p.swap = () => ([p.a, p.b] = [p.b, p.a]);
     return p;
   }
 
-  // Jeden przebieg: program, wejścia {nazwa: tekstura}, uniformy, cel.
+  // One pass: program, inputs {name: texture}, uniforms, target.
   pass(pr, inputs, uni, target) {
     const gl = this.gl;
     gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
@@ -168,7 +168,7 @@ ${src}`, name);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
-  // Wywoływane z silnika: krok symulacji (raz na klatkę) i wyświetlenie do celu sceny.
+  // Called from the engine: a simulation step (once per frame) and display into the scene target.
   render(f, slot, L, target) {
     const dt = this.lastT < 0 ? 1 / 60 : Math.min(Math.max(f.t - this.lastT, 0), 1 / 30);
     const kickHit = f.kick > 0.9 && this.lastKick <= 0.9;
@@ -220,7 +220,7 @@ class FluidSim extends SimBase {
     const c1 = L.col.c1;
     const c2 = L.col.c2;
     const v = slot.v;
-    // Stopa: 1–2 wiry barwnika w losowych miejscach i kierunkach.
+    // Kick: 1–2 dye swirls at random spots and directions.
     if (kickHit) {
       const n = 1 + (Math.random() < 0.5 ? 1 : 0);
       for (let i = 0; i < n; i++) {
@@ -230,7 +230,7 @@ class FluidSim extends SimBase {
         this.splat(0.15 + 0.7 * Math.random(), 0.15 + 0.7 * Math.random(), Math.cos(a) * force, Math.sin(a) * force, col, 0.006 + 0.01 * v[0]);
       }
     }
-    // Bas: stałe, delikatne mieszanie w punkcie krążącym po ekranie.
+    // Bass: constant, gentle stirring at a point circling the screen.
     if (f.bass > 0.15) {
       const t = this.t * 0.3;
       const x = 0.5 + 0.32 * Math.sin(t * 1.3);
@@ -238,7 +238,7 @@ class FluidSim extends SimBase {
       const k = f.bass * 0.25 * L.react;
       this.splat(x, y, Math.cos(t * 2.1) * k, Math.sin(t * 2.1) * k, c2.map((c) => c * 0.06 * f.bass), 0.004);
     }
-    // Wiry (vorticity), nieściśliwość (ciśnienie), przenoszenie.
+    // Vorticity, incompressibility (pressure), advection.
     this.pass(p.curl, { uVel: vel.a }, { uTx: tx }, this.curl);
     this.pass(p.vorticity, { uVel: vel.a, uCurl: this.curl }, { uTx: tx, uDt: dt, uStr: 10 + 15 * v[2] }, vel.b);
     vel.swap();
@@ -268,13 +268,13 @@ class RDSim extends SimBase {
     this.p = {};
     for (const [k, src] of Object.entries(RD)) this.p[k] = this.prog(src, `rd-${k}`);
     this.st = null;
-    // Cykl: wzór rośnie, aż przestanie przybywać, potem się cofa (wyższe "kill"), a po zniknięciu rośnie od nowa.
+    // Cycle: the pattern grows until it stops spreading, then recedes (higher "kill"), and once gone grows again.
     this.phase = 'grow';
     this.cov = 0;
     this.covHist = [];
     this.phaseT = 0;
     this.probeT = 0;
-    this.kd = 0; // dodatkowe kill w fazie cofania
+    this.kd = 0; // extra kill during the receding phase
     const gl = this.gl;
     const t = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, t);
@@ -315,7 +315,7 @@ class RDSim extends SimBase {
     h.push(this.cov);
     if (h.length > 8) h.shift();
     if (this.phase === 'grow') {
-      // Wzór wypełnił ekran albo od ~4 s prawie nie przybywa → zaczynamy cofanie.
+      // The pattern filled the screen or has barely grown for ~4 s → start receding.
       const stalled = h.length === 8 && this.cov - h[0] < 0.01 && this.phaseT > 8;
       if (this.cov > 0.92 || (stalled && this.cov > 0.15) || this.phaseT > 90) {
         this.phase = 'decay';
@@ -324,7 +324,7 @@ class RDSim extends SimBase {
         h.length = 0;
       }
     } else if (this.cov < 0.01 || this.phaseT > 60) {
-      // Prawie nic nie zostało → nowe zarodki i rośniemy od nowa.
+      // Almost nothing left → new seeds and grow again.
       this.phase = 'grow';
       this.phaseT = 0;
       h.length = 0;
@@ -332,7 +332,7 @@ class RDSim extends SimBase {
     }
   }
 
-  // Rodzaje wzorów (feed, kill): koral, plamy, robaki, komórki.
+  // Pattern types (feed, kill): coral, spots, worms, cells.
   params(v) {
     const presets = [
       [0.0545, 0.062],
@@ -348,7 +348,7 @@ class RDSim extends SimBase {
     const p = this.p;
     if (!this.st || Math.abs(aspect - this.aspect) > 0.01) {
       const h = 320;
-      // Gray-Scott potrzebuje precyzji: float32, jeśli karta umie go wygładzać; inaczej half float.
+      // Gray-Scott needs precision: float32 if the GPU can filter it; otherwise half float.
       const f32 = !!this.gl.getExtension('OES_texture_float_linear');
       this.st = this.pair(Math.round(h * aspect), h, f32);
       this.aspect = aspect;
@@ -360,7 +360,7 @@ class RDSim extends SimBase {
     }
     const st = this.st;
     this.cycle(dt);
-    // Cofanie: kill rośnie stopniowo, więc wzór topnieje od brzegów zamiast zniknąć naraz.
+    // Receding: kill rises gradually, so the pattern melts from the edges instead of vanishing at once.
     this.kd = this.phase === 'decay' ? Math.min(0.025, this.kd + dt * 0.0004) : 0;
     if (kickHit && this.phase === 'grow') {
       this.pass(p.seed, { uS: st.a }, { uPt: [Math.random(), Math.random()], uR: 0.0004 + 0.0006 * f.kick, uAspect: aspect, uInit: 0 }, st.b);
