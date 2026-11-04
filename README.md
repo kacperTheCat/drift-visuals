@@ -7,7 +7,7 @@ the GPU: raymarched 3D scenes, fractals, organic forms, and real fluid and react
 simulations. They react to the music you play, follow its tempo, and can run on autopilot.
 You can also drive everything by hand or from a MIDI controller.
 
-**[▶ Live demo](DEMO_URL)**: open it in Chrome. It runs in demo mode with a synthetic beat
+**[▶ Live demo](https://kacperthecat.github.io/drift-visuals/)**: open it in Chrome. It runs in demo mode with a synthetic beat
 until you pick an audio input.
 
 No dependencies, no build step, no framework. It is plain ES modules, WebGL2, Web Audio and Web MIDI.
@@ -47,7 +47,7 @@ No dependencies, no build step, no framework. It is plain ES modules, WebGL2, We
 ## Run it locally
 
 ```bash
-git clone REPO_URL drift && cd drift
+git clone https://github.com/kacperTheCat/drift-visuals.git && cd drift-visuals
 python3 serve.py 8080        # or: npm start
 ```
 
