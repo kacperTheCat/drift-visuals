@@ -74,7 +74,7 @@ export class AudioIn {
     this.src = this.ctx.createMediaStreamSource(stream);
     this.src.connect(this.gain);
     this.kind = 'input';
-    this.label = stream.getAudioTracks()[0]?.label || 'wejście audio';
+    this.label = stream.getAudioTracks()[0]?.label || 'audio input';
   }
 
   useFile(file) {

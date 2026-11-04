@@ -185,7 +185,7 @@ export class Engine {
       antialias: false, alpha: false, depth: false, stencil: false,
       powerPreference: 'high-performance',
     });
-    if (!gl) throw new Error('Ta przeglądarka nie obsługuje WebGL2.');
+    if (!gl) throw new Error('This browser does not support WebGL2.');
     this.gl = gl;
     this.errors = {};
 

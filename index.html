@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="pl">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>DRIFT — wizualizacje</title>
+  <title>DRIFT — visuals</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,22 +12,22 @@
       <div class="brand">DRIFT<span>visuals</span></div>
 
       <div class="group source">
-        <select id="device" title="Źródło dźwięku — wybór od razu podłącza"></select>
+        <select id="device" title="Audio source — picking one connects right away"></select>
         <input type="file" id="file" accept="audio/*" hidden>
         <span id="srcStatus" class="muted"></span>
       </div>
 
       <div class="group tempo">
-        <label class="bpm" title="Wpisz BPM i naciśnij Enter (wyłącza AUTO)"><input id="bpm" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="128.0"><small>BPM</small></label>
+        <label class="bpm" title="Type a BPM and press Enter (turns AUTO off)"><input id="bpm" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="128.0"><small>BPM</small></label>
         <div class="dots" id="dots"><i></i><i></i><i></i><i></i></div>
         <button id="tap" title="Tap tempo (T)">TAP</button>
-        <button id="sync" title="Teraz jest początek frazy (Enter)">SYNC 1</button>
-        <button id="bpmAuto" class="toggle" title="Automatyczne śledzenie BPM">AUTO</button>
+        <button id="sync" title="Now is the start of a phrase (Enter)">SYNC 1</button>
+        <button id="bpmAuto" class="toggle" title="Automatic BPM tracking">AUTO</button>
       </div>
 
       <div class="group meters">
-        <div class="meter in" title="Poziom sygnału na wejściu (po wzmocnieniu czułości)"><b id="mIn"></b><span>IN</span></div>
-        <label class="gain" title="Czułość wejścia: wzmocnienie sygnału przed analizą. Podkręć, gdy mikrofon słabo łapie dźwięk (pasek IN powinien sięgać ponad połowę).">
+        <div class="meter in" title="Input signal level (after sensitivity gain)"><b id="mIn"></b><span>IN</span></div>
+        <label class="gain" title="Input sensitivity: gain applied before analysis. Raise it when the microphone picks up too little (the IN meter should reach past half).">
           <input type="range" id="inputGain" min="0" max="40" step="1">
           <small id="inputGainVal">+0 dB</small>
         </label>
@@ -36,18 +36,18 @@
         <div class="meter"><b id="mMid"></b><span>MID</span></div>
         <div class="meter"><b id="mHigh"></b><span>HI</span></div>
         <div class="meter"><b id="mEnergy"></b><span>NRG</span></div>
-        <div class="kick" id="kick" title="Wykryta stopa"></div>
+        <div class="kick" id="kick" title="Detected kick"></div>
       </div>
 
       <div class="group midi">
-        <button id="midiBtn" title="Włącz sterowanie z kontrolera MIDI">MIDI</button>
-        <button id="learnBtn" class="toggle" hidden title="Przypisz kontrolki MIDI, klikając elementy panelu">Learn</button>
-        <button id="mapBtn" hidden title="Lista przypisań MIDI">Mapowanie</button>
+        <button id="midiBtn" title="Enable control from a MIDI controller">MIDI</button>
+        <button id="learnBtn" class="toggle" hidden title="Assign MIDI controls by clicking panel elements">Learn</button>
+        <button id="mapBtn" hidden title="List of MIDI assignments">Mapping</button>
         <span id="midiStatus" class="muted"></span>
       </div>
 
       <div class="state" id="state">GROOVE</div>
-      <button id="keysBtn" class="toggle" title="Pokaż skróty klawiszowe">?</button>
+      <button id="keysBtn" class="toggle" title="Show keyboard shortcuts">?</button>
     </header>
 
     <main>
@@ -56,43 +56,43 @@
         <section class="stage">
           <canvas id="view"></canvas>
           <div class="overlay" id="overlay"></div>
-          <div class="fps" id="fps" title="Klatki na sekundę (i czas klatki). Z otwartym oknem wyjścia — FPS projektora."></div>
+          <div class="fps" id="fps" title="Frames per second (and frame time). With the output window open — the projector FPS."></div>
           <div class="hint" id="hint" hidden></div>
         </section>
 
         <section>
           <div class="actions">
             <button id="aFlash">Flash <kbd>X</kbd></button>
-            <button id="aStrobe">Strobo <kbd>S</kbd></button>
-            <button id="aGlitch" title="Glitch — działa, póki trzymasz">Glitch <kbd>Z</kbd></button>
-            <button id="aShatter" class="toggle" title="Rozpad — obraz pęka i przez 4 takty rozpada się; ponownie = złożenie">Rozpad <kbd>C</kbd></button>
+            <button id="aStrobe">Strobe <kbd>S</kbd></button>
+            <button id="aGlitch" title="Glitch — active while held">Glitch <kbd>Z</kbd></button>
+            <button id="aShatter" class="toggle" title="Shatter — the image cracks and falls apart over 4 bars; press again to reassemble">Shatter <kbd>C</kbd></button>
             <button id="aBlack" class="toggle">Blackout <kbd>B</kbd></button>
-            <button id="aOutput" class="primary">Okno wyjścia <kbd>O</kbd></button>
-            <button id="aFull">Pełny ekran <kbd>F</kbd></button>
+            <button id="aOutput" class="primary">Output window <kbd>O</kbd></button>
+            <button id="aFull">Fullscreen <kbd>F</kbd></button>
           </div>
         </section>
 
         <section>
-          <h2>Drop <small class="muted">D = uzbrój / anuluj</small></h2>
+          <h2>Drop <small class="muted">D = arm / cancel</small></h2>
           <div class="row tight droprow">
-            <div class="seg" id="dropIn" title="Drop za ile taktów (ponowny klik = anuluj)">
+            <div class="seg" id="dropIn" title="Drop in how many bars (click again to cancel)">
               <button data-v="1">1</button><button data-v="4">4</button><button data-v="8">8</button><button data-v="16">16</button>
             </div>
-            <div class="dropbar"><b id="dropProg"></b><span id="dropLabel">nieuzbrojony</span></div>
+            <div class="dropbar"><b id="dropProg"></b><span id="dropLabel">not armed</span></div>
           </div>
           <div class="chips" id="dropBuild">
-            <span class="lbl">Narastanie</span>
-            <button data-v="blur">Rozmycie</button><button data-v="accel">Przyspieszenie</button><button data-v="dark">Ściemnianie</button><button data-v="strobe">Strobo</button><button data-v="glitch">Glitch</button><button data-v="shatter">Rozpad</button>
+            <span class="lbl">Build-up</span>
+            <button data-v="blur">Blur</button><button data-v="accel">Speed-up</button><button data-v="dark">Darken</button><button data-v="strobe">Strobe</button><button data-v="glitch">Glitch</button><button data-v="shatter">Shatter</button>
           </div>
-          <div class="dropprog" title="Co wejdzie w momencie dropu. Domyślnie to, co gra teraz (bez zmian); zaprogramowane pole jest podświetlone.">
-            <label>Głębia<select id="dpScene"></select></label>
-            <label>Tło<select id="dpBack"></select></label>
-            <label>Kolory głębi<select id="dpPal"></select></label>
-            <label>Kolory tła<select id="dpPalBack"></select></label>
+          <div class="dropprog" title="What comes in on the drop. By default whatever is playing now (no change); a programmed field is highlighted.">
+            <label>Depth<select id="dpScene"></select></label>
+            <label>Backdrop<select id="dpBack"></select></label>
+            <label>Depth colours<select id="dpPal"></select></label>
+            <label>Backdrop colours<select id="dpPalBack"></select></label>
           </div>
           <div class="chips" id="dropHit">
-            <span class="lbl">Na dropie</span>
-            <button data-v="vary">Wariacja</button><button data-v="flash">Flash</button>
+            <span class="lbl">On the drop</span>
+            <button data-v="vary">Variation</button><button data-v="flash">Flash</button>
           </div>
         </section>
 
@@ -100,57 +100,57 @@
 
         <!-- Widoczne tylko w trybie MIDI learn: akcje bez własnego przycisku w panelu -->
         <section class="learn-only">
-          <h2>Dodatkowe akcje MIDI <small class="muted">kliknij, potem rusz kontrolką</small></h2>
+          <h2>Extra MIDI actions <small class="muted">click, then move a control</small></h2>
           <div class="actions">
-            <button id="mPrevScene">◀ Scena głębi</button>
-            <button id="mNextScene">Scena głębi ▶</button>
-            <button id="mNextBlend">Nakładanie ▶</button>
-            <button id="mPrevBack">◀ Tło</button>
-            <button id="mNextBack">Tło ▶</button>
-            <button id="mBalCenter">Balans: środek</button>
-            <button id="mNextPal">Kolory głębi ▶</button>
-            <button id="mNextPalBack">Kolory tła ▶</button>
-            <button id="mPresetMinilab">Układ MiniLab 3</button>
-            <button id="mClearMidi" class="danger">Usuń wszystkie</button>
+            <button id="mPrevScene">◀ Depth scene</button>
+            <button id="mNextScene">Depth scene ▶</button>
+            <button id="mNextBlend">Blend ▶</button>
+            <button id="mPrevBack">◀ Backdrop</button>
+            <button id="mNextBack">Backdrop ▶</button>
+            <button id="mBalCenter">Balance: centre</button>
+            <button id="mNextPal">Depth colours ▶</button>
+            <button id="mNextPalBack">Backdrop colours ▶</button>
+            <button id="mPresetMinilab">MiniLab 3 layout</button>
+            <button id="mClearMidi" class="danger">Remove all</button>
           </div>
-          <label class="slider">Scena głębi (gałka) <input type="range" id="mSceneKnob" min="0" max="127" value="0"></label>
-          <label class="slider">Tło (gałka) <input type="range" id="mBackKnob" min="0" max="127" value="0"></label>
+          <label class="slider">Depth scene (knob) <input type="range" id="mSceneKnob" min="0" max="127" value="0"></label>
+          <label class="slider">Backdrop (knob) <input type="range" id="mBackKnob" min="0" max="127" value="0"></label>
         </section>
       </div>
 
       <!-- Kolumna 2: głębia -->
       <aside class="col">
         <section>
-          <h2>Głębia <small class="muted">● = w puli autopilota</small></h2>
+          <h2>Depth <small class="muted">● = in autopilot pool</small></h2>
           <div class="scenes" id="scenes"></div>
-          <div class="seg wide" id="trans" title="Jak długo stara scena głębi przenika się z nową (dotyczy kliknięć, klawiszy, MIDI i autopilota; Shift + klawisz = zawsze cięcie)">
-            <button data-v="cut" title="Cięcie — nowa scena głębi od razu, bez przenikania">cięcie</button><button data-v="beat" title="Przenikanie przez 1 beat (ok. 0,5 s przy 128 BPM)">1 beat</button><button data-v="bar" title="Przenikanie przez 1 takt = 4 beaty (ok. 1,9 s przy 128 BPM)">1 takt</button><button data-v="phrase" title="Powolne przenikanie przez 4 takty = 16 beatów (ok. 7,5 s przy 128 BPM)">4 takty</button>
+          <div class="seg wide" id="trans" title="How long the old depth scene crossfades into the new one (clicks, keys, MIDI and autopilot; Shift + key = always a cut)">
+            <button data-v="cut" title="Cut — the new depth scene immediately, no crossfade">cut</button><button data-v="beat" title="Crossfade over 1 beat (about 0.5 s at 128 BPM)">1 beat</button><button data-v="bar" title="Crossfade over 1 bar = 4 beats (about 1.9 s at 128 BPM)">1 bar</button><button data-v="phrase" title="Slow crossfade over 4 bars = 16 beats (about 7.5 s at 128 BPM)">4 bars</button>
           </div>
         </section>
         <section>
-          <label class="slider">Intensywność <input type="range" id="intensity" min="0" max="100"></label>
-          <label class="slider">Reaktywność <input type="range" id="react" min="0" max="100"></label>
-          <label class="slider">Ruch <input type="range" id="speed" min="0" max="200" title="Prędkość ruchu (100 = normalnie)"></label>
-          <label class="slider">Smugi <input type="range" id="trails" min="0" max="100"></label>
+          <label class="slider">Intensity <input type="range" id="intensity" min="0" max="100"></label>
+          <label class="slider">Reactivity <input type="range" id="react" min="0" max="100"></label>
+          <label class="slider">Motion <input type="range" id="speed" min="0" max="200" title="Motion speed (100 = normal)"></label>
+          <label class="slider">Trails <input type="range" id="trails" min="0" max="100"></label>
           <div class="row tight">
-            <span class="lbl">Kolory <kbd>P</kbd></span>
+            <span class="lbl">Colours <kbd>P</kbd></span>
             <div class="pals" id="pals"></div>
           </div>
-          <button id="aVary" class="wide">Wariacja głębi <kbd>V</kbd></button>
-          <button id="aDepth" class="toggle wide">Głębia widoczna <kbd>L</kbd></button>
+          <button id="aVary" class="wide">Depth variation <kbd>V</kbd></button>
+          <button id="aDepth" class="toggle wide">Depth visible <kbd>L</kbd></button>
           <div class="chips quality">
-            <span class="lbl">Jakość obrazu</span>
-            <button id="qFxaa" title="Wygładza schodki na krawędziach scen 3D (tanie)">Wygładzanie krawędzi</button>
-            <button id="qHiRes" title="Sceny liczone w 1,5× wyższej rozdzielczości — najwięcej detalu, ok. 2× większe obciążenie karty graficznej">Wysoka rozdzielczość</button>
+            <span class="lbl">Image quality</span>
+            <button id="qFxaa" title="Smooths jagged edges of 3D scenes (cheap)">Edge smoothing</button>
+            <button id="qHiRes" title="Scenes rendered at 1.5× resolution — most detail, about 2× the GPU load">High resolution</button>
           </div>
         </section>
         <section>
-          <h2>Warstwy</h2>
+          <h2>Layers</h2>
           <div class="xf">
-            <span>TŁO</span><input type="range" id="balance" min="0" max="1000" title="Balans (← →, ↓ = środek)"><span>GŁĘBIA</span>
+            <span>BACKDROP</span><input type="range" id="balance" min="0" max="1000" title="Balance (← →, ↓ = centre)"><span>DEPTH</span>
           </div>
-          <div class="seg wide" id="blend" title="Nakładanie głębi na tło (M)"></div>
-          <label class="check"><input type="checkbox" id="autoBlend"> Autopilot zmienia nakładanie</label>
+          <div class="seg wide" id="blend" title="How depth is blended over the backdrop (M)"></div>
+          <label class="check"><input type="checkbox" id="autoBlend"> Autopilot changes blend</label>
 
         </section>
       </aside>
@@ -158,35 +158,35 @@
       <!-- Kolumna 3: tło -->
       <aside class="col">
         <section>
-          <h2>Tło <small class="muted">G = następne</small></h2>
+          <h2>Backdrop <small class="muted">G = next</small></h2>
           <div class="scenes" id="backs"></div>
-          <div class="seg wide" id="transBack" title="Jak długo stare tło przenika się z nowym (kliknięcie, klawisz G, MIDI; Shift + klik = cięcie)">
-            <button data-v="cut" title="Cięcie — nowe tło od razu">cięcie</button><button data-v="bar" title="Przenikanie przez 1 takt = 4 beaty (ok. 1,9 s przy 128 BPM)">1 takt</button><button data-v="bar2" title="Przenikanie przez 2 takty = 8 beatów (ok. 3,8 s przy 128 BPM)">2 takty</button><button data-v="phrase" title="Powolne przenikanie przez 4 takty = 16 beatów (ok. 7,5 s przy 128 BPM)">4 takty</button>
+          <div class="seg wide" id="transBack" title="How long the old backdrop crossfades into the new one (click, G key, MIDI; Shift + click = cut)">
+            <button data-v="cut" title="Cut — the new backdrop immediately">cut</button><button data-v="bar" title="Crossfade over 1 bar = 4 beats (about 1.9 s at 128 BPM)">1 bar</button><button data-v="bar2" title="Crossfade over 2 bars = 8 beats (about 3.8 s at 128 BPM)">2 bars</button><button data-v="phrase" title="Slow crossfade over 4 bars = 16 beats (about 7.5 s at 128 BPM)">4 bars</button>
           </div>
         </section>
         <section>
-          <label class="slider">Jasność <input type="range" id="backLevel" min="0" max="100"></label>
-          <label class="slider">Reaktywność <input type="range" id="backReact" min="0" max="100"></label>
-          <label class="slider">Ruch <input type="range" id="backSpeed" min="0" max="200" title="Prędkość ruchu (100 = normalnie)"></label>
+          <label class="slider">Brightness <input type="range" id="backLevel" min="0" max="100"></label>
+          <label class="slider">Reactivity <input type="range" id="backReact" min="0" max="100"></label>
+          <label class="slider">Motion <input type="range" id="backSpeed" min="0" max="200" title="Motion speed (100 = normal)"></label>
           <div class="row tight">
-            <span class="lbl">Kolory <kbd>⇧P</kbd></span>
+            <span class="lbl">Colours <kbd>⇧P</kbd></span>
             <div class="pals" id="palsBack"></div>
           </div>
-          <label class="check"><input type="checkbox" id="linkPal"> Tło w kolorach głębi</label>
-          <button id="aVaryBack" class="wide">Wariacja tła <kbd>⇧V</kbd></button>
-          <label class="check"><input type="checkbox" id="autoBack"> Autopilot zmienia tło</label>
+          <label class="check"><input type="checkbox" id="linkPal"> Backdrop uses depth colours</label>
+          <button id="aVaryBack" class="wide">Backdrop variation <kbd>⇧V</kbd></button>
+          <label class="check"><input type="checkbox" id="autoBack"> Autopilot changes backdrop</label>
         </section>
 
         <section class="autosec">
           <h2>Autopilot</h2>
           <div class="row tight">
-            <button id="auto" class="toggle big">AUTOPILOT <kbd>Spacja</kbd></button>
-            <div class="seg" id="phrase" title="Zmiana co ile taktów">
+            <button id="auto" class="toggle big">AUTOPILOT <kbd>Space</kbd></button>
+            <div class="seg" id="phrase" title="Change every how many bars">
               <button data-v="8">8</button><button data-v="16">16</button><button data-v="32">32</button>
             </div>
           </div>
           <div class="phrasebar"><b id="phraseProg"></b></div>
-          <label class="check"><input type="checkbox" id="autoPal"> Autopilot zmienia kolory</label>
+          <label class="check"><input type="checkbox" id="autoPal"> Autopilot changes colours</label>
           <ul class="events" id="events"></ul>
         </section>
       </aside>
@@ -199,18 +199,18 @@
   <div class="modal" id="midiMap" hidden>
     <div class="modal-box">
       <div class="modal-head">
-        <h2>Mapowanie MIDI</h2>
+        <h2>MIDI mapping</h2>
         <span id="mmInfo" class="muted"></span>
-        <button id="mmClose" title="Zamknij (Esc)">✕</button>
+        <button id="mmClose" title="Close (Esc)">✕</button>
       </div>
       <div class="row tight">
-        <button id="mmAdd" class="primary">+ Dodaj: rusz kontrolką</button>
-        <button id="mmPreset">Wczytaj układ MiniLab 3</button>
-        <button id="mmClear" class="danger">Wyczyść wszystko</button>
+        <button id="mmAdd" class="primary">+ Add: move a control</button>
+        <button id="mmPreset">Load MiniLab 3 layout</button>
+        <button id="mmClear" class="danger">Clear all</button>
       </div>
       <div class="mm-scroll">
         <table class="mm">
-          <thead><tr><th>Kontrolka</th><th>Wartość</th><th>Akcja</th><th>Tryb gałki</th><th>Ostatni wynik</th><th></th></tr></thead>
+          <thead><tr><th>Control</th><th>Value</th><th>Action</th><th>Knob mode</th><th>Last result</th><th></th></tr></thead>
           <tbody id="mmBody"></tbody>
         </table>
       </div>

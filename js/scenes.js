@@ -92,7 +92,7 @@ export const SCENES = [
   // GŁĘBIA — 3D
   // =====================================================================
   {
-    id: 'arches', name: 'Łuki', layer: 'depth', mood: 'drive',
+    id: 'arches', name: 'Arches', layer: 'depth', mood: 'drive',
     map: /* glsl */ `
 float map(vec3 p){
   float id=floor(p.z/2.5);
@@ -119,7 +119,7 @@ void main(){
 }`,
   },
   {
-    id: 'core', name: 'Rdzeń', layer: 'depth', mood: 'both',
+    id: 'core', name: 'Core', layer: 'depth', mood: 'both',
     map: /* glsl */ `
 float map(vec3 p){
   p.xz*=rot(uTime*.15);p.xy*=rot(uTime*.1+uVar.x*3.);
@@ -152,7 +152,7 @@ void main(){
 }`,
   },
   {
-    id: 'field', name: 'Pole', layer: 'depth', mood: 'both',
+    id: 'field', name: 'Field', layer: 'depth', mood: 'both',
     map: /* glsl */ `
 float map(vec3 p){
   vec2 id=floor(p.xz);
@@ -180,7 +180,7 @@ void main(){
   },
 
   {
-    id: 'rings', name: 'Pierścienie', layer: 'depth', mood: 'both',
+    id: 'rings', name: 'Rings', layer: 'depth', mood: 'both',
     map: /* glsl */ `
 float map(vec3 p){
   float d=1e3;
@@ -209,7 +209,7 @@ void main(){
 }`,
   },
   {
-    id: 'spiral', name: 'Spirala', layer: 'depth', mood: 'drive',
+    id: 'spiral', name: 'Spiral', layer: 'depth', mood: 'drive',
     map: /* glsl */ `
 float map(vec3 p){
   p.xy*=rot(p.z*(.08+.12*uVar.x));
@@ -236,7 +236,7 @@ void main(){
 }`,
   },
   {
-    id: 'mercury', name: 'Rtęć', layer: 'depth', mood: 'calm',
+    id: 'mercury', name: 'Mercury', layer: 'depth', mood: 'calm',
     map: /* glsl */ `
 float map(vec3 p){
   float d=length(p)-(.6+.15*KICK);
@@ -290,7 +290,7 @@ void main(){
 }`,
   },
   {
-    id: 'crystal', name: 'Kryształ', layer: 'depth', mood: 'both',
+    id: 'crystal', name: 'Crystal', layer: 'depth', mood: 'both',
     map: /* glsl */ `
 float map(vec3 p){
   p.xz*=rot(uTime*.12);p.yz*=rot(uTime*.09);
@@ -324,7 +324,7 @@ void main(){
   // GŁĘBIA — płaskie (alfa z jasności)
   // =====================================================================
   {
-    id: 'tunnel', name: 'Tunel', layer: 'depth', mood: 'drive',
+    id: 'tunnel', name: 'Tunnel', layer: 'depth', mood: 'drive',
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv();
@@ -345,7 +345,7 @@ void main(){
 }`,
   },
   {
-    id: 'grid', name: 'Korytarz', layer: 'depth', mood: 'drive',
+    id: 'grid', name: 'Corridor', layer: 'depth', mood: 'drive',
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv();
@@ -363,7 +363,7 @@ void main(){
 }`,
   },
   {
-    id: 'kaleido', name: 'Kalejdoskop', layer: 'depth', mood: 'drive',
+    id: 'kaleido', name: 'Kaleidoscope', layer: 'depth', mood: 'drive',
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv();
@@ -384,7 +384,7 @@ void main(){
 }`,
   },
   {
-    id: 'orbit', name: 'Orbity', layer: 'depth', mood: 'both',
+    id: 'orbit', name: 'Orbits', layer: 'depth', mood: 'both',
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv();
@@ -404,7 +404,7 @@ void main(){
 }`,
   },
   {
-    id: 'pulse', name: 'Puls', layer: 'depth', mood: 'calm',
+    id: 'pulse', name: 'Pulse', layer: 'depth', mood: 'calm',
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv()*rot(uTime*.05);
@@ -496,7 +496,7 @@ void main(){
   // GŁĘBIA — organiczne 3D
   // =====================================================================
   {
-    id: 'organism', name: 'Organizm', layer: 'depth', mood: 'both',
+    id: 'organism', name: 'Organism', layer: 'depth', mood: 'both',
     map: /* glsl */ `
 float map(vec3 p){
   p.xz*=rot(uTime*.1);p.xy*=rot(uTime*.07);
@@ -523,7 +523,7 @@ void main(){
 }`,
   },
   {
-    id: 'artery', name: 'Arteria', layer: 'depth', mood: 'drive',
+    id: 'artery', name: 'Artery', layer: 'depth', mood: 'drive',
     map: /* glsl */ `
 // Fala skurczu przesuwająca się wzdłuż tunelu w rytm beatu.
 float peri(float z){return exp(-pow((fract(z*.1-uBeats*.25)-.5)*6.,2.));}
@@ -551,7 +551,7 @@ void main(){
   },
 
   {
-    id: 'ripples', name: 'Fale', layer: 'depth', mood: 'both',
+    id: 'ripples', name: 'Ripples', layer: 'depth', mood: 'both',
     // Kręgi widma: co pół taktu w środku rodzi się kontur w kształcie okrągłego wykresu
     // częstotliwości (płaty rosną ze średnimi/wysokimi) i rozchodzi się na zewnątrz.
     // Każdy krąg jest lekko obrócony (wir), kolor przechodzi z akcentu w drugi kolor palety.
@@ -586,7 +586,7 @@ void main(){
   // GŁĘBIA — organiczne 3D (druga seria)
   // =====================================================================
   {
-    id: 'mycel', name: 'Grzybnia', layer: 'depth', mood: 'both',
+    id: 'mycel', name: 'Mycelium', layer: 'depth', mood: 'both',
     // Lot przez sieć splątanych włókien (przecięcia dwóch gyroidów); po nitkach biegną impulsy.
     map: /* glsl */ `
 float gy(vec3 p){ return dot(sin(p),cos(p.zxy)); }
@@ -612,7 +612,7 @@ void main(){
 }`,
   },
   {
-    id: 'nautilus', name: 'Muszla', layer: 'depth', mood: 'calm',
+    id: 'nautilus', name: 'Nautilus', layer: 'depth', mood: 'calm',
     // Spirala logarytmiczna łodzika; skala rośnie płynnie, więc kamera bez końca "wkręca się" do środka.
     map: /* glsl */ `
 float map(vec3 p){
@@ -644,7 +644,7 @@ void main(){
 }`,
   },
   {
-    id: 'spine', name: 'Kręgosłup', layer: 'depth', mood: 'drive',
+    id: 'spine', name: 'Spine', layer: 'depth', mood: 'drive',
     // Łańcuch kręgów wije się jak wąż; skręt i światło przebiegają wzdłuż w rytm.
     map: /* glsl */ `
 float map(vec3 p){
@@ -673,7 +673,7 @@ void main(){
 }`,
   },
   {
-    id: 'villi', name: 'Kosmki', layer: 'depth', mood: 'calm',
+    id: 'villi', name: 'Villi', layer: 'depth', mood: 'calm',
     // Tunel z falujących wypustek (jak wnętrze jelita); końcówki lekko świecą.
     map: /* glsl */ `
 float map(vec3 p){
@@ -702,7 +702,7 @@ void main(){
 }`,
   },
   {
-    id: 'seeds', name: 'Nasiona', layer: 'depth', mood: 'both',
+    id: 'seeds', name: 'Seeds', layer: 'depth', mood: 'both',
     // Chmura strąków wirujących w strumieniu powietrza; stopa je rozpycha.
     map: /* glsl */ `
 float map(vec3 p){
@@ -765,7 +765,7 @@ void main(){
 }`,
   },
   {
-    id: 'lavalamp', name: 'Lampa lawa', layer: 'depth', mood: 'calm',
+    id: 'lavalamp', name: 'Lava lamp', layer: 'depth', mood: 'calm',
     // Miękkie bryły wosku unoszą się, łączą i opadają w szklanym walcu; ciepło świecą.
     map: /* glsl */ `
 float map(vec3 p){
@@ -791,7 +791,7 @@ void main(){
 }`,
   },
   {
-    id: 'vortex', name: 'Wir', layer: 'depth', mood: 'both',
+    id: 'vortex', name: 'Vortex', layer: 'depth', mood: 'both',
     // Lejek wiru wciągający ciecz spiralą; obroty przyspieszają z basem, grzbiety świecą na stopę.
     map: /* glsl */ `
 float wH(vec2 xz){
@@ -818,7 +818,7 @@ void main(){
 }`,
   },
   {
-    id: 'ribs', name: 'Żebra', layer: 'depth', mood: 'drive',
+    id: 'ribs', name: 'Ribs', layer: 'depth', mood: 'drive',
     // Klatka piersiowa z kręgosłupem (ten sam świat co Kręgosłup); w środku pulsuje rdzeń.
     // Żebra rozchylone jak skrzydła na zawiasach przy kręgosłupie; wariacja (uVar.x) zmienia stopień otwarcia.
     map: /* glsl */ `
@@ -902,7 +902,7 @@ void main(){
 }`,
   },
   {
-    id: 'fog', name: 'Mgła', layer: 'back', mood: 'calm',
+    id: 'fog', name: 'Fog', layer: 'back', mood: 'calm',
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv()*(1.2+uVar.x);
@@ -918,7 +918,7 @@ void main(){
 }`,
   },
   {
-    id: 'glow', name: 'Poświata', layer: 'back', mood: 'both',
+    id: 'glow', name: 'Glow', layer: 'back', mood: 'both',
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv();
@@ -935,7 +935,7 @@ void main(){
 }`,
   },
   {
-    id: 'horizon', name: 'Horyzont', layer: 'back', mood: 'both',
+    id: 'horizon', name: 'Horizon', layer: 'back', mood: 'both',
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv();
@@ -982,7 +982,7 @@ void main(){
 }`,
   },
   {
-    id: 'lines', name: 'Skaner', layer: 'back', mood: 'drive',
+    id: 'lines', name: 'Scanner', layer: 'back', mood: 'drive',
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv();
@@ -999,7 +999,7 @@ void main(){
 }`,
   },
   {
-    id: 'void', name: 'Pustka', layer: 'back', mood: 'both',
+    id: 'void', name: 'Void', layer: 'back', mood: 'both',
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv();
@@ -1009,7 +1009,7 @@ void main(){
 }`,
   },
   {
-    id: 'dust', name: 'Pył', layer: 'back', mood: 'both',
+    id: 'dust', name: 'Dust', layer: 'back', mood: 'both',
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv();
@@ -1029,7 +1029,7 @@ void main(){
 }`,
   },
   {
-    id: 'aurora', name: 'Zorza', layer: 'back', mood: 'calm',
+    id: 'aurora', name: 'Aurora', layer: 'back', mood: 'calm',
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv();
@@ -1062,7 +1062,7 @@ void main(){
 }`,
   },
   {
-    id: 'contours', name: 'Izolinie', layer: 'back', mood: 'both',
+    id: 'contours', name: 'Contours', layer: 'back', mood: 'both',
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv()*(1.5+uVar.x);
@@ -1074,7 +1074,7 @@ void main(){
 }`,
   },
   {
-    id: 'cells', name: 'Komórki', layer: 'back', mood: 'both',
+    id: 'cells', name: 'Cells', layer: 'back', mood: 'both',
     frag: /* glsl */ `
 void main(){
   vec2 p=cuv()*(3.+uVar.x*3.);
@@ -1107,7 +1107,7 @@ void main(){
 }`,
   },
   {
-    id: 'veins', name: 'Żyły', layer: 'back', mood: 'calm',
+    id: 'veins', name: 'Veins', layer: 'back', mood: 'calm',
     // Sieć naczyń (grzbiety szumu), przez którą od "serca" płynie puls — ostre czoło, wygasający ogon.
     // uVar: x = skala, y = ostrość naczyń, z = puls co 2 beaty / co beat, w = położenie serca (serce powoli wędruje).
     frag: /* glsl */ `
@@ -1139,7 +1139,7 @@ void main(){
 }`,
   },
   {
-    id: 'pond', name: 'Tafla', layer: 'back', mood: 'calm',
+    id: 'pond', name: 'Pond', layer: 'back', mood: 'calm',
     // Spokojna, ciemna woda: co beat w losowym miejscu spada kropla (stopa = mocniejsza),
     // powolna fala powierzchni rośnie z basem, tafla odbija "niebo" w kolorach palety.
     // uVar: x = krople co beat / co 2 beaty, y = siła fali, z = szybkość kręgów, w = kierunek światła.
@@ -1177,7 +1177,7 @@ void main(){
   },
   // ---- tła organiczne (druga seria) ----
   {
-    id: 'plankton', name: 'Bioluminescencja', layer: 'back', mood: 'calm',
+    id: 'plankton', name: 'Bioluminescence', layer: 'back', mood: 'calm',
     // Drobny plankton dryfuje w ciemnej wodzie; fala rozbłysku przechodzi od środka co 2 beaty.
     frag: /* glsl */ `
 void main(){
@@ -1204,7 +1204,7 @@ void main(){
 }`,
   },
   {
-    id: 'ink', name: 'Atrament', layer: 'back', mood: 'calm',
+    id: 'ink', name: 'Ink', layer: 'back', mood: 'calm',
     // Tusz w wodzie jako bryła: gęstość tuszu = wysokość, z cieniowaniem i odbłyskiem (jak gruba,
     // lśniąca smuga), plus druga, głębsza i ciemniejsza warstwa poruszająca się wolniej (paralaksa).
     frag: /* glsl */ `
@@ -1238,7 +1238,7 @@ void main(){
 }`,
   },
   {
-    id: 'woodgrain', name: 'Słoje', layer: 'back', mood: 'calm',
+    id: 'woodgrain', name: 'Wood grain', layer: 'back', mood: 'calm',
     // Słoje drewna — falujące linie powoli płyną.
     frag: /* glsl */ `
 void main(){
@@ -1252,7 +1252,7 @@ void main(){
 }`,
   },
   {
-    id: 'leaf', name: 'Liść', layer: 'back', mood: 'both',
+    id: 'leaf', name: 'Leaf', layer: 'back', mood: 'both',
     // Liść z żyłkami (główna, boczne, siateczka); od ogonka do czubka przepływa puls.
     frag: /* glsl */ `
 float vor(vec2 p){
@@ -1282,7 +1282,7 @@ void main(){
 }`,
   },
   {
-    id: 'mitosis', name: 'Mitoza', layer: 'back', mood: 'calm',
+    id: 'mitosis', name: 'Mitosis', layer: 'back', mood: 'calm',
     // Komórki pod mikroskopem. Wszystkie tworzą jedno wspólne pole (miękkie łączenie jak krople),
     // więc stykające się komórki zlewają błony w jedną, a dzielące się — przewężają i rozrywają.
     // Każda komórka płynie po własnym wektorze i dzieli się we własnym kierunku; rodzi się
@@ -1328,7 +1328,7 @@ void main(){
   },
   // ---- tła: płyny ----
   {
-    id: 'cymatics', name: 'Cymatyka', layer: 'back', mood: 'both',
+    id: 'cymatics', name: 'Cymatics', layer: 'back', mood: 'both',
     // Wzory fal stojących na drgającej cieczy (figury Chladniego); kształt zmienia się
     // z częstotliwościami, bas zagęszcza linie, stopa wprawia piasek w drganie.
     frag: /* glsl */ `
@@ -1349,7 +1349,7 @@ void main(){
 }`,
   },
   {
-    id: 'caustics', name: 'Kaustyki', layer: 'back', mood: 'calm',
+    id: 'caustics', name: 'Caustics', layer: 'back', mood: 'calm',
     // Świetlne wzory jak na dnie basenu; stopa lekko je rozjaśnia.
     frag: /* glsl */ `
 float caustic(vec2 uv,float t){
@@ -1373,7 +1373,7 @@ void main(){
 }`,
   },
   {
-    id: 'marbling', name: 'Marmurkowanie', layer: 'back', mood: 'calm',
+    id: 'marbling', name: 'Marbling', layer: 'back', mood: 'calm',
     // Farby na wodzie (ebru): pasma koloru przeczesywane grzebieniem; stopa mocniej czesze.
     frag: /* glsl */ `
 void main(){
@@ -1392,7 +1392,7 @@ void main(){
 }`,
   },
   {
-    id: 'oil', name: 'Olej na wodzie', layer: 'back', mood: 'calm',
+    id: 'oil', name: 'Oil slick', layer: 'back', mood: 'calm',
     // Opalizujące smugi cienkiej warstwy oleju na ciemnej wodzie, w kolorach palety.
     frag: /* glsl */ `
 void main(){
@@ -1409,12 +1409,12 @@ void main(){
   },
   // ---- tła: symulacje (stan żyje między klatkami — liczone w js/sim.js) ----
   {
-    id: 'fluidsim', name: 'Ciecz', layer: 'back', mood: 'both', sim: 'fluid', frag: '',
+    id: 'fluidsim', name: 'Fluid', layer: 'back', mood: 'both', sim: 'fluid', frag: '',
     // Prawdziwa symulacja płynu: stopa wstrzykuje barwne wiry, bas stale delikatnie miesza.
     // uVar: x = wielkość wirów, y = siła wstrzyknięcia, z = zawirowania, w = jak szybko barwnik gaśnie.
   },
   {
-    id: 'rdsim', name: 'Reakcja-dyfuzja', layer: 'back', mood: 'calm', sim: 'rd', frag: '',
+    id: 'rdsim', name: 'Reaction-diffusion', layer: 'back', mood: 'calm', sim: 'rd', frag: '',
     // Wzory Turinga (Gray-Scott) rosną na żywo; stopa zasiewa nowe plamy.
     // uVar: x = rodzaj wzoru (koral / plamy / robaki / komórki), y = tempo wzrostu.
   },

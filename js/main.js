@@ -44,7 +44,7 @@ else runControl();
 // ale to TO okno napędza pętlę — więc zasłonięty panel nie spowalnia wizualizacji.
 function runOutput() {
   document.body.classList.add('bare', 'output');
-  document.title = 'DRIFT — wyjście';
+  document.title = 'DRIFT — output';
   let engine;
   try {
     engine = new Engine(canvas, { maxDpr: 2 });
@@ -77,11 +77,11 @@ function runOutput() {
       d.outFps = { fps: meter.fps, ms: meter.dt, at: Date.now() };
       const idle = performance.now() - shown > 2500;
       hint.hidden = !!document.fullscreenElement || idle;
-      hint.textContent = 'Przeciągnij to okno na projektor i kliknij — pełny ekran';
+      hint.textContent = 'Drag this window to the projector and click — fullscreen';
       document.body.classList.toggle('nocursor', idle);
     } else {
       hint.hidden = false;
-      hint.textContent = 'Brak połączenia z panelem — otwórz okno wyjścia z panelu (O)';
+      hint.textContent = 'No connection to the panel — open the output window from the panel (O)';
     }
     requestAnimationFrame(loop);
   }
@@ -127,7 +127,7 @@ function runControl() {
       ? `left=${ext.availLeft},top=${ext.availTop},width=${ext.availWidth},height=${ext.availHeight}`
       : 'width=1280,height=720';
     outWin = window.open('?output=1', 'drift-output', `popup,${place}`);
-    d.log(ext ? `Okno wyjścia na ekranie: ${ext.label || 'drugi ekran'}` : 'Okno wyjścia otwarte');
+    d.log(ext ? `Output window on screen: ${ext.label || 'second screen'}` : 'Output window open');
     // Zgodę prosimy dopiero po otwarciu okna, żeby przeglądarka nie zablokowała popupu.
     if (!screens && 'getScreenDetails' in window) loadScreens();
   };
@@ -153,13 +153,13 @@ function runControl() {
       list = await d.audio.devices();
     } catch {}
     sel.innerHTML = '';
-    sel.append(new Option('Demo — bez dźwięku (zegar BPM)', 'demo'));
+    sel.append(new Option('Demo — no sound (BPM clock)', 'demo'));
     // Bez zgody na mikrofon przeglądarka nie podaje nazw urządzeń — wybór pozycji poprosi o zgodę.
     list.forEach((dev, i) =>
-      sel.append(new Option(dev.label || `Mikrofon / wejście audio ${list.length > 1 ? i + 1 : ''} (poprosi o zgodę)`, dev.deviceId)),
+      sel.append(new Option(dev.label || `Microphone / audio input ${list.length > 1 ? i + 1 : ''} (asks for permission)`, dev.deviceId)),
     );
     if (d.source === 'file') sel.append(new Option(`▶ ${d.audio.label}`, '__playing'));
-    sel.append(new Option('Plik audio… (do prób w domu)', '__file'));
+    sel.append(new Option('Audio file… (for rehearsing)', '__file'));
     if (d.source === 'demo') sel.value = 'demo';
     else if (d.source === 'file') sel.value = '__playing';
     else if (d.source === 'input') sel.value = d.s.deviceId || list[0]?.deviceId || 'demo';
@@ -184,7 +184,7 @@ function runControl() {
       try {
         await d.useInput(v);
       } catch (e) {
-        d.log(`Błąd wejścia: ${e.message}`);
+        d.log(`Input error: ${e.message}`);
       }
     }
     refreshDevices();
@@ -214,13 +214,13 @@ function runControl() {
 
   // --- sceny ---
   const sceneBtns = {};
-  const MOOD = { drive: 'groove', calm: 'breakdown', both: 'oba' };
+  const MOOD = { drive: 'groove', calm: 'breakdown', both: 'both' };
   const addSceneBtn = (sc, i, box, onPick) => {
     const b = document.createElement('button');
     b.className = 'scene';
     b.dataset.mood = sc.mood;
     b.title = `${sc.name} — ${MOOD[sc.mood]}`;
-    b.innerHTML = `${i !== null && DEPTH_KEYS[i] ? `<kbd>${DEPTH_KEYS[i][1]}</kbd>` : ''}<span class="nm">${sc.name}</span><span class="mood ${sc.mood}">${MOOD[sc.mood]}</span><span class="pool" title="Kliknij: w puli autopilota / poza pulą">●</span>`;
+    b.innerHTML = `${i !== null && DEPTH_KEYS[i] ? `<kbd>${DEPTH_KEYS[i][1]}</kbd>` : ''}<span class="nm">${sc.name}</span><span class="mood ${sc.mood}">${MOOD[sc.mood]}</span><span class="pool" title="Click: in / out of the autopilot pool">●</span>`;
     if (brokenScenes.includes(sc.id)) {
       b.classList.add('broken');
       b.title = engine.errors[sc.id];
@@ -320,10 +320,10 @@ function runControl() {
   // --- program dropu: co wejdzie w momencie dropu ---
   const opt = (v, t) => `<option value="${v}">${t}</option>`;
   const progSel = {
-    scene: [$('dpScene'), opt(RANDOM, '🎲 losowa') + DEPTH.map((s) => opt(s.id, s.name)).join('')],
-    back: [$('dpBack'), opt(RANDOM, '🎲 losowe') + BACK.map((s) => opt(s.id, s.name)).join('')],
-    pal: [$('dpPal'), opt(RANDOM, '🎲 losowe') + PALETTES.map((p, i) => opt(i, p.name)).join('')],
-    palBack: [$('dpPalBack'), opt(RANDOM, '🎲 losowe') + PALETTES.map((p, i) => opt(i, p.name)).join('')],
+    scene: [$('dpScene'), opt(RANDOM, '🎲 random') + DEPTH.map((s) => opt(s.id, s.name)).join('')],
+    back: [$('dpBack'), opt(RANDOM, '🎲 random') + BACK.map((s) => opt(s.id, s.name)).join('')],
+    pal: [$('dpPal'), opt(RANDOM, '🎲 random') + PALETTES.map((p, i) => opt(i, p.name)).join('')],
+    palBack: [$('dpPalBack'), opt(RANDOM, '🎲 random') + PALETTES.map((p, i) => opt(i, p.name)).join('')],
   };
   for (const [key, [el, html]] of Object.entries(progSel)) {
     el.innerHTML = html;
@@ -388,7 +388,7 @@ function runControl() {
       $('learnBtn').hidden = false;
       $('mapBtn').hidden = false;
     } catch (e) {
-      setText($('midiStatus'), `MIDI niedostępne: ${e.message}`);
+      setText($('midiStatus'), `MIDI unavailable: ${e.message}`);
     }
   };
   if (!midi.supported) $('midiBtn').disabled = true;
@@ -399,7 +399,7 @@ function runControl() {
     $('learnBtn').classList.toggle('on', midi.learning);
   });
   $('mPresetMinilab').addEventListener('click', () => midi.loadPreset('minilab3'));
-  $('mClearMidi').addEventListener('click', () => confirm('Usunąć wszystkie przypisania MIDI?') && midi.clearAll());
+  $('mClearMidi').addEventListener('click', () => confirm('Remove all MIDI assignments?') && midi.clearAll());
   document.addEventListener('keydown', (e) => {
     if (e.code !== 'Escape') return;
     if (!mm.hidden) closeMap();
@@ -418,7 +418,7 @@ function runControl() {
     const groups = {};
     for (const t of midi.targets()) (groups[t.group] ??= []).push(t);
     return (
-      '<option value="">— brak akcji —</option>' +
+      '<option value="">— no action —</option>' +
       Object.entries(groups)
         .map(([g, list]) => `<optgroup label="${esc(g)}">${list.map((t) => `<option value="${esc(t.id)}">${esc(t.label)}</option>`).join('')}</optgroup>`)
         .join('')
@@ -434,17 +434,17 @@ function runControl() {
     rows = {};
     mmBody.innerHTML = '';
     const keys = Object.keys(midi.maps).sort((a, b) => order(a) - order(b));
-    if (!keys.length) mmBody.innerHTML = '<tr class="mm-none"><td colspan="6">Brak przypisań. Kliknij „Dodaj” i rusz kontrolką.</td></tr>';
+    if (!keys.length) mmBody.innerHTML = '<tr class="mm-none"><td colspan="6">No assignments. Click “Add” and move a control.</td></tr>';
     for (const key of keys) {
       const [kind, ch] = key.split(':');
       const tr = document.createElement('tr');
       tr.innerHTML =
-        `<td>${fmtKey(key)} <span class="muted">${ch === '*' ? 'każdy kanał' : `kanał ${ch}`}</span></td>` +
+        `<td>${fmtKey(key)} <span class="muted">${ch === '*' ? 'any channel' : `channel ${ch}`}</span></td>` +
         `<td><span class="mm-val"><b></b></span></td>` +
         `<td><select class="mm-target">${opts}</select></td>` +
-        `<td>${kind === 'note' ? '<span class="muted">przycisk</span>' : `<select class="mm-mode">${modeOpts}</select>`}</td>` +
+        `<td>${kind === 'note' ? '<span class="muted">button</span>' : `<select class="mm-mode">${modeOpts}</select>`}</td>` +
         `<td class="mm-res"></td>` +
-        `<td><button class="mm-del" title="Usuń przypisanie">✕</button></td>`;
+        `<td><button class="mm-del" title="Remove assignment">✕</button></td>`;
       const tsel = tr.querySelector('.mm-target');
       tsel.value = midi.maps[key] || '';
       tsel.addEventListener('change', () => midi.setMap(key, tsel.value));
@@ -460,25 +460,25 @@ function runControl() {
       mmBody.append(tr);
       rows[key] = tr;
     }
-    setText($('mmInfo'), midi.access ? midi.inputs.map((i) => i.name).join(', ') || 'brak urządzeń MIDI' : 'MIDI wyłączone — kliknij „MIDI” w górnym pasku');
+    setText($('mmInfo'), midi.access ? midi.inputs.map((i) => i.name).join(', ') || 'no MIDI devices' : 'MIDI off — click “MIDI” in the top bar');
   }
   midi.onActivity = (key, mapKey, value, target, result) => {
     if (mm.hidden) return;
     const tr = mapKey && rows[mapKey];
     if (!tr) {
-      setText($('mmInfo'), `${fmtKey(key)} nie jest przypisane — kliknij „Dodaj” i rusz nią jeszcze raz`);
+      setText($('mmInfo'), `${fmtKey(key)} is not assigned — click “Add” and move it again`);
       return;
     }
     tr.querySelector('.mm-val b').style.width = `${(value / 127) * 100}%`;
-    tr.querySelector('.mm-res').textContent = result || (target ? '' : 'brak akcji');
-    tr.classList.toggle('warn', !target || /brak/.test(result || ''));
+    tr.querySelector('.mm-res').textContent = result || (target ? '' : 'no action');
+    tr.classList.toggle('warn', !target || /^no /.test(result || ''));
     tr.classList.add('hit');
     clearTimeout(tr.hitT);
     tr.hitT = setTimeout(() => tr.classList.remove('hit'), 200);
   };
   const addBtn = $('mmAdd');
   const resetAdd = () => {
-    addBtn.textContent = '+ Dodaj: rusz kontrolką';
+    addBtn.textContent = '+ Add: move a control';
     addBtn.classList.remove('on');
   };
   addBtn.addEventListener('click', () => {
@@ -486,7 +486,7 @@ function runControl() {
       midi.waitNext = null;
       return resetAdd();
     }
-    addBtn.textContent = 'Czekam… rusz gałką albo naciśnij pad (klik = anuluj)';
+    addBtn.textContent = 'Waiting… turn a knob or hit a pad (click = cancel)';
     addBtn.classList.add('on');
     midi.waitNext = (key) => {
       resetAdd();
@@ -516,7 +516,7 @@ function runControl() {
     renderMap();
   });
   $('mmClear').addEventListener('click', () => {
-    if (confirm('Usunąć wszystkie przypisania MIDI?')) {
+    if (confirm('Remove all MIDI assignments?')) {
       midi.clearAll();
       renderMap();
     }
@@ -541,12 +541,12 @@ function runControl() {
     const dr = d.drop;
     $('dropProg').style.transform = `scaleX(${(p ?? 0).toFixed(3)})`;
     dropBar.classList.toggle('armed', !!dr);
-    let label = 'nieuzbrojony';
+    let label = 'not armed';
     if (dr) {
       const left = Math.max(0, dr.at - f.beats);
       const bars = Math.floor(left / 4);
       const beats = Math.ceil(left % 4);
-      label = `DROP za ${bars > 0 ? `${bars} t. ` : ''}${beats} b.`;
+      label = `DROP in ${bars > 0 ? `${bars} bar ` : ''}${beats} b.`;
     }
     setText($('dropLabel'), label);
     for (const b of $('dropIn').children) b.classList.toggle('on', !!dr && +b.dataset.v === dr.bars);
@@ -581,8 +581,8 @@ function runControl() {
     if (d.source === 'demo') status = 'demo';
     else {
       status = d.audio.label;
-      if (d.audio.ctx?.state === 'suspended') status += ' · kliknij, by uruchomić audio';
-      else if (d.level < -90) status += ' · brak sygnału?';
+      if (d.audio.ctx?.state === 'suspended') status += ' · click to start audio';
+      else if (d.level < -90) status += ' · no signal?';
     }
     setText($('srcStatus'), status);
     $('srcStatus').title = status;
@@ -605,7 +605,7 @@ function runControl() {
       const why = varyBlocked(d, layer);
       const el = $(id);
       el.disabled = !!why;
-      el.title = why ? `Wariacja niedostępna: ${why}` : `Nowe parametry bieżącej sceny (${key})`;
+      el.title = why ? `Variation unavailable: ${why}` : `New parameters for the current scene (${key})`;
     }
 
     for (const sc of BACK) {
@@ -640,8 +640,8 @@ function runControl() {
 
     const blendName = BLENDS.find(([m]) => m === d.s.blend)[1];
     const dname = d.dp.prev ? `${name(d.dp.prev.id)} → ${name(d.dp.cur.id)}` : name(d.dp.cur.id);
-    const ov = f.bal < 0.01 ? '— tylko tło' : `${dname} · ${blendName}`;
-    setText($('overlay'), `${ov}  ·  tło: ${name(d.bk.cur.id)}`);
+    const ov = f.bal < 0.01 ? '— backdrop only' : `${dname} · ${blendName}`;
+    setText($('overlay'), `${ov}  ·  backdrop: ${name(d.bk.cur.id)}`);
     if (lastEvents !== d.events[0]) {
       lastEvents = d.events[0];
       $('events').innerHTML = d.events.map((e) => `<li>${e.msg}</li>`).join('');
@@ -657,7 +657,7 @@ function runControl() {
     fpsShown = now;
     const out = d.outFps && Date.now() - d.outFps.at < 1500 ? d.outFps : null;
     const m = out || { fps: meter.fps, ms: meter.dt };
-    fpsEl.textContent = `${out ? 'WYJŚCIE ' : ''}${Math.round(m.fps)} fps · ${m.ms.toFixed(1)} ms`;
+    fpsEl.textContent = `${out ? 'OUTPUT ' : ''}${Math.round(m.fps)} fps · ${m.ms.toFixed(1)} ms`;
     fpsEl.classList.toggle('mid', m.fps < 55 && m.fps >= 40);
     fpsEl.classList.toggle('low', m.fps < 40);
   }

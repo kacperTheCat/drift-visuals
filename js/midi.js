@@ -15,9 +15,9 @@ const IGNORED_PORT = /MCU|HUI/i; // porty trybu DAW dublują kontrolki w innym f
 // Tryby gałek (CC / pitch bend)
 export const KNOB_MODES = [
   ['auto', 'auto'],
-  ['abs', 'absolutna'],
-  ['offset', 'względna 64±'],
-  ['twos', 'względna 1/127'],
+  ['abs', 'absolute'],
+  ['offset', 'relative 64±'],
+  ['twos', 'relative 1/127'],
 ];
 
 function store(key, value) {
@@ -66,13 +66,13 @@ function labelOf(el) {
 // Grupa elementu (do listy akcji w oknie mapowania).
 function groupOf(el) {
   const id = el.dataset.midi;
-  if (id.startsWith('scene:')) return el.closest('#backs') ? 'Tła' : 'Sceny głębi';
-  if (id.startsWith('pal:depth')) return 'Kolory głębi';
-  if (id.startsWith('pal:back')) return 'Kolory tła';
-  if (/^(blend|phrase|trans):/.test(id)) return 'Tryby';
+  if (id.startsWith('scene:')) return el.closest('#backs') ? 'Backdrops' : 'Depth scenes';
+  if (id.startsWith('pal:depth')) return 'Depth colours';
+  if (id.startsWith('pal:back')) return 'Backdrop colours';
+  if (/^(blend|phrase|trans):/.test(id)) return 'Modes';
   const col = el.closest('.col');
-  const where = col?.querySelector('#scenes') ? 'Głębia' : col?.querySelector('#backs') ? 'Tło' : 'Na żywo';
-  return `${where}: ${el.type === 'range' ? 'suwaki' : 'przyciski'}`;
+  const where = col?.querySelector('#scenes') ? 'Depth' : col?.querySelector('#backs') ? 'Backdrop' : 'Live';
+  return `${where}: ${el.type === 'range' ? 'sliders' : 'buttons'}`;
 }
 
 export class Midi {
@@ -133,7 +133,7 @@ export class Midi {
   attach() {
     for (const input of this.access.inputs.values())
       input.onmidimessage = IGNORED_PORT.test(input.name) ? null : (e) => this.handle(e);
-    if (this.debug) console.log('[MIDI] urządzenia:', this.inputs.map((i) => `${i.name} (${i.manufacturer || '?'})`));
+    if (this.debug) console.log('[MIDI] devices:', this.inputs.map((i) => `${i.name} (${i.manufacturer || '?'})`));
     // Znany kontroler i brak własnych przypisań → od razu gotowy układ.
     // Niezmieniony preset wczytujemy od nowa, żeby łapał poprawki w kodzie.
     const saved = read(PRESET);
@@ -157,7 +157,7 @@ export class Midi {
     this.save();
     store(PRESET, key);
     this.refreshBadges();
-    if (!quiet) this.d.log(`MIDI: układ ${p.name}`);
+    if (!quiet) this.d.log(`MIDI: ${p.name} layout`);
   }
 
   get inputs() {
@@ -194,8 +194,8 @@ export class Midi {
     else if (type === 0xe0) [kind, value, pressed] = ['pb', Math.round((((b << 7) | a) / 16383) * 127), false];
     else {
       if (this.debug) {
-        const names = { 0xa0: 'aftertouch nuty', 0xc0: 'zmiana programu', 0xd0: 'aftertouch kanału', 0xf0: 'systemowy/SysEx' };
-        console.log(`[MIDI] ${e.target?.name || ''} | ${names[type] || 'inny'} (kanał ${ch}) | [${hex}] — nieobsługiwany`);
+        const names = { 0xa0: 'note aftertouch', 0xc0: 'program change', 0xd0: 'channel aftertouch', 0xf0: 'system/SysEx' };
+        console.log(`[MIDI] ${e.target?.name || ''} | ${names[type] || 'other'} (channel ${ch}) | [${hex}] — not handled`);
       }
       return;
     }
@@ -206,7 +206,7 @@ export class Midi {
     const mapKey = this.mapKeyFor(key);
     const target = mapKey ? this.maps[mapKey] : null;
     const what =
-      kind === 'cc' ? `CC ${a} = ${b}` : kind === 'pb' ? `pitch bend = ${value}` : `nuta ${a} ${pressed ? 'wciśnięta' : 'puszczona'} (vel ${b})`;
+      kind === 'cc' ? `CC ${a} = ${b}` : kind === 'pb' ? `pitch bend = ${value}` : `note ${a} ${pressed ? 'on' : 'off'} (vel ${b})`;
 
     // "Dodaj" w oknie mapowania: następna kontrolka zostaje dodana, bez wykonywania akcji.
     if (this.waitNext && (kind !== 'note' || pressed)) {
@@ -216,7 +216,7 @@ export class Midi {
       return;
     }
     if (this.learning) {
-      if (this.debug) console.log(`[MIDI] ${what} | klucz ${key} (tryb Learn)`);
+      if (this.debug) console.log(`[MIDI] ${what} | key ${key} (Learn mode)`);
       if (this.selected && (kind !== 'note' || pressed)) this.assign(key, this.selected);
       else this.status();
       return;
@@ -224,7 +224,7 @@ export class Midi {
     const result = target ? this.apply(target, kind, value, pressed, key, mapKey) : null;
     if (this.debug) {
       console.log(
-        `[MIDI] ${e.target?.name || ''} | kanał ${ch} | ${what} | [${hex}] | klucz ${key} → ${target || 'NIE ZMAPOWANE'}${result ? ` | ${result}` : ''}`,
+        `[MIDI] ${e.target?.name || ''} | channel ${ch} | ${what} | [${hex}] | key ${key} → ${target || 'NOT MAPPED'}${result ? ` | ${result}` : ''}`,
       );
     }
     this.onActivity?.(key, mapKey, value, target, result);
@@ -234,7 +234,7 @@ export class Midi {
   // Wykonuje akcję; zwraca krótki opis wyniku (do logu i okna mapowania).
   apply(target, kind, value, pressed, key, mapKey) {
     const el = document.querySelector(`[data-midi="${CSS.escape(target)}"]`);
-    if (!el) return 'brak elementu w panelu!';
+    if (!el) return 'no such element in the panel!';
     this.applying = true;
     try {
       if (el.type === 'range') {
@@ -247,23 +247,23 @@ export class Midi {
           if (delta === null) el.value = min + ((max - min) * value) / 127;
           else {
             el.value = +el.value + (delta * (max - min)) / 100;
-            how = `wzgl. ${delta > 0 ? '+' : ''}${delta}`;
+            how = `rel. ${delta > 0 ? '+' : ''}${delta}`;
           }
         } else el.value = pressed ? max : min;
         el.dispatchEvent(new Event('input', { bubbles: true }));
-        return `suwak = ${Math.round(((el.value - min) / (max - min)) * 100)}% (${how})`;
+        return `slider = ${Math.round(((el.value - min) / (max - min)) * 100)}% (${how})`;
       }
       // Przyciski reagują na zbocze (naciśnięcie), a "trzymane" (strobo) też na puszczenie.
       const was = this.btn[key] || false;
       this.btn[key] = pressed;
-      if (was === pressed) return pressed ? 'trzymany' : null;
+      if (was === pressed) return pressed ? 'held' : null;
       if ('hold' in el.dataset) {
         el.dispatchEvent(new PointerEvent(pressed ? 'pointerdown' : 'pointerup'));
-        return pressed ? 'wciśnięty (trzymaj)' : 'puszczony';
+        return pressed ? 'pressed (hold)' : 'released';
       }
       if (pressed) {
         el.click();
-        return 'kliknięty';
+        return 'clicked';
       }
       return null;
     } finally {
@@ -379,9 +379,9 @@ export class Midi {
       const maps = Object.values(this.maps).filter(Boolean).length;
       if (this.learning) {
         const el = this.selected && document.querySelector(`[data-midi="${CSS.escape(this.selected)}"]`);
-        msg = el ? `${labelOf(el)} → rusz kontrolką` : 'Kliknij element (PPM = usuń)';
+        msg = el ? `${labelOf(el)} → move a control` : 'Click an element (right-click = remove)';
       } else {
-        msg = n ? `${n} urz. · ${maps} przyp.` : 'brak urządzeń';
+        msg = n ? `${n} dev · ${maps} maps` : 'no devices';
         if (this.d.midiClockActive) msg += ' · CLOCK';
         if (this.last) msg += ` · ${fmtKey(this.last)}`;
       }

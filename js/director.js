@@ -7,10 +7,10 @@ export const RANDOM = '__random'; // wartość "losowa" w programie dropu
 export const TRANSITIONS = { cut: 0, beat: 1, bar: 4, bar2: 8, phrase: 16 }; // w beatach
 // Tryby nakładania głębi na tło (kolejność = numer trybu w shaderze kompozycji).
 export const BLENDS = [
-  ['normal', 'Normalny'],
-  ['screen', 'Światło'],
-  ['mask', 'Maska'],
-  ['diff', 'Różnica'],
+  ['normal', 'Normal'],
+  ['screen', 'Screen'],
+  ['mask', 'Mask'],
+  ['diff', 'Difference'],
 ];
 const STORE = 'drift.settings.v1';
 
@@ -20,10 +20,10 @@ export const VARIES = new Set(SCENES.filter((s) => s.sim || /uVar\.[xyzw]/.test(
 // Czy wariacja w warstwie ma sens: scena ją obsługuje i warstwa jest widoczna. Zwraca powód albo null.
 export function varyBlocked(d, layer) {
   const id = (layer === 'back' ? d.bk : d.dp).cur.id;
-  if (!VARIES.has(id)) return 'ta scena nie ma wariacji';
-  if (layer === 'depth' && d.bal < 0.01) return 'głębia jest niewidoczna (balans / L)';
+  if (!VARIES.has(id)) return 'this scene has no variations';
+  if (layer === 'depth' && d.bal < 0.01) return 'depth is not visible (balance / L)';
   if (layer === 'back' && ((d.bal > 0.99 && d.s.blend !== 'mask') || d.s.backLevel < 0.01))
-    return 'tło jest niewidoczne (balans / jasność)';
+    return 'backdrop is not visible (balance / brightness)';
   return null;
 }
 
@@ -160,20 +160,20 @@ export class Director {
     this.source = 'input';
     this.an.reset();
     this.set('deviceId', deviceId || null);
-    this.log(`Wejście: ${this.audio.label}`);
+    this.log(`Input: ${this.audio.label}`);
   }
 
   useFile(file) {
     this.audio.useFile(file);
     this.source = 'file';
     this.an.reset();
-    this.log(`Plik: ${file.name}`);
+    this.log(`File: ${file.name}`);
   }
 
   useDemo() {
     this.audio.stop();
     this.source = 'demo';
-    this.log('Tryb demo (syntetyczny beat)');
+    this.log('Demo mode (synthetic beat)');
   }
 
   // ---------- sceny ----------
@@ -237,7 +237,7 @@ export class Director {
 
   toggleDepth() {
     this.depthOn = !this.depthOn;
-    this.log(this.depthOn ? 'Głębia włączona' : 'Tylko tło');
+    this.log(this.depthOn ? 'Depth on' : 'Backdrop only');
   }
 
   pick(mood, layer = 'depth') {
@@ -308,7 +308,7 @@ export class Director {
     this.clock.bpm = bpm;
     this.demo.bpm = bpm;
     this.set('bpmAuto', false);
-    this.log(`BPM ${bpm.toFixed(1)} (ręcznie, AUTO wył.)`);
+    this.log(`BPM ${bpm.toFixed(1)} (manual, AUTO off)`);
   }
 
   tap() {
@@ -357,7 +357,7 @@ export class Director {
     this.clock.beats = Math.ceil(this.clock.beats / 64) * 64;
     this.lastBar = Math.floor(this.clock.beats / 4);
     this.barsSince = 0;
-    this.log('MIDI start — początek frazy');
+    this.log('MIDI start — phrase start');
   }
 
   midiContinue(t) {
@@ -401,7 +401,7 @@ export class Director {
     // Połowa breakdownów: zostaw samo tło; reszta: spokojna scena głębi.
     if (Math.random() < 0.5) {
       this.depthOn = false;
-      this.log('Autopilot → tylko tło');
+      this.log('Autopilot → backdrop only');
     } else this.setScene(this.pick('calm'), 'phrase', true);
   }
 
@@ -426,14 +426,14 @@ export class Director {
   armDrop(bars = null) {
     if (this.drop && (bars === null || bars === this.drop.bars)) {
       this.drop = null;
-      this.log('Drop anulowany');
+      this.log('Drop cancelled');
       return;
     }
     bars = bars ?? this.s.dropBars;
     this.set('dropBars', bars);
     const b = this.clock.beats;
     this.drop = { bars, from: b, at: (Math.floor(b / 4) + bars) * 4, seed: Math.floor(Math.random() * 1000) };
-    this.log(`Drop za ${bars} ${bars === 1 ? 'takt' : bars < 5 ? 'takty' : 'taktów'}`);
+    this.log(`Drop in ${bars} ${bars === 1 ? 'bar' : 'bars'}`);
   }
 
   // Postęp odliczania 0..1 (albo null, gdy drop nie jest uzbrojony).
@@ -497,7 +497,7 @@ export class Director {
         this.log(`Autopilot → ${SCENES.find((s) => s.id === id)?.name}`);
       } else {
         this.vary();
-        this.log('Autopilot → wariacja');
+        this.log('Autopilot → variation');
       }
       if (!this.depthOn && this.state === 'groove') this.depthOn = true;
       if (this.s.autoBack) {
@@ -505,7 +505,7 @@ export class Director {
         if (r2 < 0.35) {
           const id = this.pick(null, 'back');
           this.setBack(id, 16);
-          this.log(`Autopilot → tło ${SCENES.find((s) => s.id === id)?.name}`);
+          this.log(`Autopilot → backdrop ${SCENES.find((s) => s.id === id)?.name}`);
         } else if (r2 < 0.7) this.vary(1, 'back');
       }
       // Nakładanie: zwykle Normalny, czasem na frazę inny tryb.
@@ -513,7 +513,7 @@ export class Director {
         const m = Math.random() < 0.4 ? 'normal' : BLENDS[1 + Math.floor(Math.random() * 3)][0];
         if (m !== this.s.blend) {
           this.setBlend(m);
-          this.log(`Autopilot → nakładanie: ${BLENDS.find(([x]) => x === m)[1]}`);
+          this.log(`Autopilot → blend: ${BLENDS.find(([x]) => x === m)[1]}`);
         }
       }
       if (this.s.autoPalette) {

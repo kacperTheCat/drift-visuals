@@ -104,8 +104,7 @@ js/main.js         control panel and output window
   npm test
   ```
 
-Code comments and the UI are in Polish. A detailed Polish manual is in
-[README.pl.md](README.pl.md).
+Code comments are in Polish. A detailed manual (in Polish) is in [README.pl.md](README.pl.md).
 
 ## Performance
 

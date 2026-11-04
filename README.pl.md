@@ -1,5 +1,8 @@
 # DRIFT — wizualizacje dla DJ (hypnotic / deep techno)
 
+> Interfejs aplikacji jest po angielsku; ta instrukcja używa polskich nazw elementów
+> (np. Głębia = Depth, Tło = Backdrop, Rozpad = Shatter, Wariacja = Variation, Nakładanie = Blend).
+
 Przeglądarkowy VJ tool: shadery WebGL2 reagujące na dźwięk, zegar BPM i autopilot,
 który sam zmienia sceny na granicach fraz, a na breakdownach i dropach reaguje osobno.
 

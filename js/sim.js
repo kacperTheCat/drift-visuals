@@ -108,7 +108,7 @@ class SimBase {
     this.e = engine;
     this.gl = engine.gl;
     const gl = this.gl;
-    if (!gl.getExtension('EXT_color_buffer_float')) throw new Error('Brak obsługi tekstur zmiennoprzecinkowych (EXT_color_buffer_float).');
+    if (!gl.getExtension('EXT_color_buffer_float')) throw new Error('Floating-point textures are not supported (EXT_color_buffer_float).');
     this.lastT = -1;
     this.lastKick = 0;
   }
