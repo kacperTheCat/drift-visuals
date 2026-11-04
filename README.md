@@ -7,6 +7,9 @@ the GPU: raymarched 3D scenes, fractals, organic forms, and real fluid and react
 simulations. They react to the music you play, follow its tempo, and can run on autopilot.
 You can also drive everything by hand or from a MIDI controller.
 
+DRIFT was built out of a real need: visuals for my own DJ sets that actually follow the music
+in the room. It kept growing out of pure passion for the craft, and it is used live, not just a demo.
+
 **[▶ Live demo](https://kacperthecat.github.io/drift-visuals/)**: open it in Chrome. It runs in demo mode with a synthetic beat
 until you pick an audio input.
 
