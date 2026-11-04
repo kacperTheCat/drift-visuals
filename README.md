@@ -19,7 +19,7 @@ No dependencies, no build step, no framework. It is plain ES modules, WebGL2, We
 |---|---|
 | ![Spine](docs/gif/spine.gif) | ![Ribs](docs/gif/ribs.gif) |
 | ![Ripples](docs/gif/ripples.gif) | ![Fluid simulation](docs/gif/fluid.gif) |
-| ![Reaction–diffusion](docs/gif/rd.gif) | ![Mandelbulb](docs/img/bulb.jpg) |
+| ![Reaction–diffusion](docs/img/rd.jpg) | ![Mandelbulb](docs/img/bulb.jpg) |
 
 | | |
 |---|---|
