@@ -1,6 +1,6 @@
 # DRIFT — live visuals for music
 
-![Ferrofluid scene](docs/img/ferro.jpg)
+![Ferrofluid scene](docs/gif/ferro.gif)
 
 DRIFT is a browser-based VJ tool for DJs. Every visual is a GLSL shader rendered live on
 the GPU: raymarched 3D scenes, fractals, organic forms, and real fluid and reaction–diffusion
@@ -15,10 +15,16 @@ until you pick an audio input.
 
 No dependencies, no build step, no framework. It is plain ES modules, WebGL2, Web Audio and Web MIDI.
 
+| | |
+|---|---|
+| ![Ribs](docs/gif/ribs.gif) | ![Ripples](docs/gif/ripples.gif) |
+| ![Fluid simulation](docs/gif/fluid.gif) | ![Reaction–diffusion](docs/gif/rd.gif) |
+
 | | | |
 |---|---|---|
-| ![Ribs](docs/img/ribs.jpg) | ![Mandelbulb](docs/img/bulb.jpg) | ![Mycelium](docs/img/mycel.jpg) |
-| ![Reaction–diffusion](docs/img/rd.jpg) | ![Cymatics](docs/img/cymatics.jpg) | ![Fluid simulation](docs/img/fluid.jpg) |
+| ![Mandelbulb](docs/img/bulb.jpg) | ![Mycelium](docs/img/mycel.jpg) | ![Cymatics](docs/img/cymatics.jpg) |
+
+All images are rendered by the DRIFT engine itself, reacting to a synthetic 128 BPM beat.
 
 ## Features
 
@@ -115,6 +121,10 @@ The full manual, covering the drop, MIDI, the projector setup and every scene, i
 Most scenes render in 3–10 ms per frame at 1080p on an Apple-silicon MacBook. Simulations run
 on fixed-size grids, so their cost does not grow with resolution. The FPS counter in the
 preview shows the output window's frame rate while that window is open.
+
+## Roadmap
+
+What is planned next, from small fixes to bigger features, is in [ROADMAP.md](ROADMAP.md).
 
 ## License
 
